@@ -36,6 +36,12 @@ int main() {
 			scanf("%s", arg3); // recebe a quantidade de vezes que a busca deve ser feita
 			SELECT_WHERE(arg1, arg2); // chama a função de buscar e listar pessoas se baseando em critérios específicos
 			break;
+
+		case 5: // se a funcionalidade escolhida for a numero 5:
+			scanf("%s", arg1); // recebe o nome do arquivo binário
+			scanf("%s", arg2); // recebe o nome do arquivo de índice
+			INSERT_INTERACTIVE(arg1, arg2); // chama a função de inserção interativa
+			break;
         
 		default: // se não for uma opção valida
 			printf("Funcionalidade inválida.\n"); // retorna uma mensagem de erro para avisar que a funcionalidade escolhida é invalida 

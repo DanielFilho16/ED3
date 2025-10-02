@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdint.h>
+#include <ctype.h>
 
 // Estrutura do cabeçalho do arquivo pessoa.bin
 typedef struct {
@@ -43,6 +44,10 @@ void CREAT_INDEX(char *nomeArquivo);
 void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo);
 void SELECT(char *binArquivo);
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo);
-void binarioNaTela(char *nomeArquivoSaida);
+void INSERT_INTERACTIVE(char *binArquivo, char *indiceArquivo);
+
+// Funções do arquivo utilidades.c
+void binarioNaTela(char *nomeArquivoBinario);
+void scan_quote_string(char *str);
 
 #endif
