@@ -316,8 +316,128 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
     binarioNaTela(indiceArquivo);
 }
 
+// Função auxiliar para ler um registro pessoa do arquivo binário
+int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
+    // Ler campo removido
+    if (fread(&pessoa->removido, sizeof(char), 1, arquivo) != 1) {
+        return 0; // Fim do arquivo ou erro
+    }
+    
+    // Ler tamanho do registro
+    if (fread(&pessoa->tamanhoRegistro, sizeof(int), 1, arquivo) != 1) {
+        return 0;
+    }
+    
+    // Ler campos fixos
+    if (fread(&pessoa->idPessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    if (fread(&pessoa->idadePessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    
+    // Ler nomePessoa
+    if (fread(&pessoa->tamanhoNomePessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    
+    if (pessoa->tamanhoNomePessoa > 0) {
+        pessoa->nomePessoa = malloc(pessoa->tamanhoNomePessoa + 1);
+        if (fread(pessoa->nomePessoa, sizeof(char), pessoa->tamanhoNomePessoa, arquivo) != pessoa->tamanhoNomePessoa) {
+            free(pessoa->nomePessoa);
+            return 0;
+        }
+        pessoa->nomePessoa[pessoa->tamanhoNomePessoa] = '\0';
+    } else {
+        pessoa->nomePessoa = NULL;
+    }
+    
+    // Ler nomeUsuario
+    if (fread(&pessoa->tamanhoNomeUsuario, sizeof(int), 1, arquivo) != 1) {
+        if (pessoa->nomePessoa) free(pessoa->nomePessoa);
+        return 0;
+    }
+    
+    if (pessoa->tamanhoNomeUsuario > 0) {
+        pessoa->nomeUsuario = malloc(pessoa->tamanhoNomeUsuario + 1);
+        if (fread(pessoa->nomeUsuario, sizeof(char), pessoa->tamanhoNomeUsuario, arquivo) != pessoa->tamanhoNomeUsuario) {
+            if (pessoa->nomePessoa) free(pessoa->nomePessoa);
+            free(pessoa->nomeUsuario);
+            return 0;
+        }
+        pessoa->nomeUsuario[pessoa->tamanhoNomeUsuario] = '\0';
+    } else {
+        pessoa->nomeUsuario = NULL;
+    }
+    
+    return 1; // Sucesso
+}
+
+// Funcionalidade 3: Listar todos os registros do arquivo binário
 void SELECT(char *binArquivo) {
-    printf("Funcionalidade ainda não implementada.\n");
+    FILE *arquivo;
+    CabecalhoPessoa cabecalho;
+    RegistroPessoa pessoa;
+    int registrosEncontrados = 0;
+    
+    // Abrir arquivo binário para leitura
+    arquivo = fopen(binArquivo, "rb");
+    if (arquivo == NULL) {
+        printf("Falha no processamento do arquivo.\n");
+        return;
+    }
+    
+    // Ler cabeçalho
+    if (fread(&cabecalho, sizeof(CabecalhoPessoa), 1, arquivo) != 1) {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(arquivo);
+        return;
+    }
+    
+    // Verificar se o arquivo está consistente (status = '1')
+    if (cabecalho.status != '1') {
+        printf("Falha no processamento do arquivo.\n");
+        fclose(arquivo);
+        return;
+    }
+    
+    // Percorrer todos os registros sequencialmente
+    while (lerRegistroPessoa(arquivo, &pessoa)) {
+        // Verificar se o registro não foi logicamente removido
+        if (pessoa.removido == '0') {
+            registrosEncontrados++;
+            
+            // Exibir dados do registro conforme especificação
+            printf("Dados da pessoa de codigo %d\n", pessoa.idPessoa);
+            
+            // Nome (ou "-" se nulo)
+            printf("Nome: %s\n", pessoa.nomePessoa ? pessoa.nomePessoa : "-");
+            
+            // Idade (ou "-" se nulo/inválido)
+            if (pessoa.idadePessoa == -1) {
+                printf("Idade: -\n");
+            } else {
+                printf("Idade: %d\n", pessoa.idadePessoa);
+            }
+            
+            // Usuario (ou "-" se nulo)
+            printf("Usuario: %s\n", pessoa.nomeUsuario ? pessoa.nomeUsuario : "-");
+            
+            // Linha em branco entre registros
+            printf("\n");
+        }
+        
+        // Liberar memória alocada
+        if (pessoa.nomePessoa) {
+            free(pessoa.nomePessoa);
+            pessoa.nomePessoa = NULL;
+        }
+        if (pessoa.nomeUsuario) {
+            free(pessoa.nomeUsuario);
+            pessoa.nomeUsuario = NULL;
+        }
+    }
+    
+    // Se não encontrou nenhum registro válido
+    if (registrosEncontrados == 0) {
+        printf("Registro inexistente.\n");
+    }
+    
+    fclose(arquivo);
 }
 
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo) {

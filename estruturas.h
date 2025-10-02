@@ -46,6 +46,9 @@ void SELECT(char *binArquivo);
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo);
 void INSERT_INTERACTIVE(char *binArquivo, char *indiceArquivo);
 
+// Função auxiliar para leitura de registros
+int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa);
+
 // Funções do arquivo utilidades.c
 void binarioNaTela(char *nomeArquivoBinario);
 void scan_quote_string(char *str);
