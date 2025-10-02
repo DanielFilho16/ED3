@@ -36,14 +36,14 @@ typedef struct {
 // Estrutura do registro do índice
 typedef struct {
     int idPessoa;             // 4 bytes
-    long long byteOffset;     // 8 bytes
+    int byteOffset;           // 4 bytes
 } RegistroIndice;
 
 // Declaração das funções
 void CREAT_INDEX(char *nomeArquivo);
 void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo);
 void SELECT(char *binArquivo);
-void SELECT_WHERE(char *binArquivo, char *indiceArquivo);
+void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n);
 void INSERT_INTERACTIVE(char *binArquivo, char *indiceArquivo);
 
 // Função auxiliar para leitura de registros

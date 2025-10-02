@@ -34,7 +34,7 @@ int main() {
 			scanf("%s", arg1); // recebe o nome do arquivo binário de entrada
 			scanf("%s", arg2); // recebe o nome do arquivo binário de índice primario 
 			scanf("%s", arg3); // recebe a quantidade de vezes que a busca deve ser feita
-			SELECT_WHERE(arg1, arg2); // chama a função de buscar e listar pessoas se baseando em critérios específicos
+			SELECT_WHERE(arg1, arg2, atoi(arg3)); // chama a função de buscar e listar pessoas se baseando em critérios específicos
 			break;
 
 		case 5: // se a funcionalidade escolhida for a numero 5:
