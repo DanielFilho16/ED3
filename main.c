@@ -1,50 +1,50 @@
 // Dupla 31
-// Aluno	: Daniel Dias Silva Filho ------------ N¬∞ USP: 13677114
-// Aluno : Kaue Ant√¥nio Maranzano de Ara√∫jo --- N¬∞ USP: 14669684
+// Aluno	: Daniel Dias Silva Filho ------------ N∞ USP: 13677114
+// Aluno : Kaue AntÙnio Maranzano de Ara˙jo --- N∞ USP: 14669684
 
 #include "estruturas.h"
 
 int main() {
-	
-	int funcionalidade; // declara uma variavel para salvar a escolha do usu√°rio
-	char arg1[100], arg2[100], arg3[100]; // declara 3 poss√≠veis argumentos para o usu√°rio passar ap√≥s a escolha 
-	
-	scanf("%d", &funcionalidade); // recebe a escolha do usu√°rio pelo STDin
+
+	int funcionalidade; // declara uma variavel para salvar a escolha do usu·rio
+	char arg1[100], arg2[100], arg3[100]; // declara 3 possÌveis argumentos para o usu·rio passar apÛs a escolha
+
+	scanf("%d", &funcionalidade); // recebe a escolha do usu·rio pelo STDin
 
 	switch (funcionalidade) {
 
 		case 1: // se a funcionalidade escolhida for a numero 1:
-			scanf("%s", arg1);	// recebe o nome do arquivo de √≠ndice primario a ser criado 
-			CREAT_INDEX(arg1);	// chama a fun√ß√£o de criar arquivo de indice primario passando o unico argumento necessario 
+			scanf("%s", arg1);	// recebe o nome do arquivo de Ìndice primario a ser criado
+			CREAT_INDEX(arg1);	// chama a funÁ„o de criar arquivo de indice primario passando o unico argumento necessario
 			break;
 
 		case 2: // se a funcionalidade escolhida for a numero 2:
 			scanf("%s", arg1); // recebe o nome do arquivo csv de entrada
-			scanf("%s", arg2); // recebe o nome do arquivo bin√°rio de saida
-			scanf("%s", arg3); // recebe o nome do arquivo de √≠ndice prim√°rio
-			CREAT_TABLE(arg1, arg2, arg3); // chama a fun√ß√£o de criar uma tabela passando os 3 argumentos necessarios
+			scanf("%s", arg2); // recebe o nome do arquivo bin·rio de saida
+			scanf("%s", arg3); // recebe o nome do arquivo de Ìndice prim·rio
+			CREAT_TABLE(arg1, arg2, arg3); // chama a funÁ„o de criar uma tabela passando os 3 argumentos necessarios
 			break;
 
 		case 3: // se a funcionalidade escolhida for a numero 3 :
-			scanf("%s", arg1); // recebe o nome do arquivo bin√°rio a ser listado            
-			SELECT(arg1); // chama a fun√ß√£o de listar tabela passando o √∫nico argumento necess√°rio
+			scanf("%s", arg1); // recebe o nome do arquivo bin·rio a ser listado
+			SELECT(arg1); // chama a funÁ„o de listar tabela passando o ˙nico argumento necess·rio
 			break;
-		
+
 		case 4: // se a funcionalidade escolhida for a numero 4:
-			scanf("%s", arg1); // recebe o nome do arquivo bin√°rio de entrada
-			scanf("%s", arg2); // recebe o nome do arquivo bin√°rio de √≠ndice primario 
+			scanf("%s", arg1); // recebe o nome do arquivo bin·rio de entrada
+			scanf("%s", arg2); // recebe o nome do arquivo bin·rio de Ìndice primario
 			scanf("%s", arg3); // recebe a quantidade de vezes que a busca deve ser feita
-			SELECT_WHERE(arg1, arg2, atoi(arg3)); // chama a fun√ß√£o de buscar e listar pessoas se baseando em crit√©rios espec√≠ficos
+			SELECT_WHERE(arg1, arg2, atoi(arg3)); // chama a funÁ„o de buscar e listar pessoas se baseando em critÈrios especÌficos
 			break;
 
 		case 5: // se a funcionalidade escolhida for a numero 5:
-			scanf("%s", arg1); // recebe o nome do arquivo bin√°rio
-			scanf("%s", arg2); // recebe o nome do arquivo de √≠ndice
-			INSERT_INTERACTIVE(arg1, arg2); // chama a fun√ß√£o de inser√ß√£o interativa
+			scanf("%s", arg1); // recebe o nome do arquivo bin·rio
+			scanf("%s", arg2); // recebe o nome do arquivo de Ìndice
+			INSERT_INTERACTIVE(arg1, arg2); // chama a funÁ„o de inserÁ„o interativa
 			break;
-        
-		default: // se n√£o for uma op√ß√£o valida
-			printf("Funcionalidade inv√°lida.\n"); // retorna uma mensagem de erro para avisar que a funcionalidade escolhida √© invalida 
+
+		default: // se n„o for uma opÁ„o valida
+			printf("Funcionalidade inv·lida.\n"); // retorna uma mensagem de erro para avisar que a funcionalidade escolhida È invalida
 			break;
     }
 
