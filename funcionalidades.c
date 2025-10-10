@@ -86,7 +86,9 @@ void CREAT_INDEX(char *nomeArquivo) {
     }
 
     // Escrever cabeçalho no arquivo
-    fwrite(&cabecalho, sizeof(CabecalhoIndice), 1, arquivo);
+    fwrite(&cabecalho.status, 1 , 1, arquivo);
+    fwrite(&cabecalho.lixo,11,1,arquivo);
+
 
     // Fechar arquivo e marcar status como fechado
     cabecalho.status = '1';
@@ -297,7 +299,9 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
         registroIndice.idPessoa = pessoa.idPessoa;
         registroIndice.byteOffset = offsetAtual;
         fseek(indiceFile, 0, SEEK_END);
-        fwrite(&registroIndice, sizeof(RegistroIndice), 1, indiceFile);
+
+        fwrite(&registroIndice.idPessoa, sizeof(int), 1, indiceFile);
+        fwrite(&registroIndice.byteOffset, sizeof(long long),1,indiceFile);
 
         quantidadePessoas++;
 
@@ -533,7 +537,7 @@ int buscaIndexada(char *binArquivo, char *indiceArquivo, int idProcurado) {
     }
 
     // Percorrer registros do índice procurando o ID
-    while (fread(&registroIndice, sizeof(RegistroIndice), 1, arquivoIndice) == 1) {
+    while ((fread(&registroIndice.idPessoa, sizeof(int), 1, arquivoIndice) == 1 )&& (fread(&registroIndice.byteOffset, sizeof(long long), 1, arquivoIndice) == 1  ) ) {
         if (registroIndice.idPessoa == idProcurado) {
             // ID encontrado, ir para o offset no arquivo binário
             fseek(arquivoBin, registroIndice.byteOffset, SEEK_SET);

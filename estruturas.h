@@ -37,7 +37,7 @@ typedef struct {
 typedef struct {
     int idPessoa;             // 4 bytes
     //int byteOffset;           // 4 bytes
-    long byteOffset;
+    long long byteOffset;            //8 bytes
 } RegistroIndice;
 
 // Declaração das funções
