@@ -101,7 +101,7 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
     strcpy(temp, linha);
     
     // Usar sscanf para extrair os campos separados por vírgula
-    // Formato esperado: idPessoa,idadePessoa,nomePessoa,nomeUsuario
+    // Formato real: idPessoa,nomePessoa,idade,nomeUsuario
     
     // Ler idPessoa (primeiro campo)
     if (sscanf(temp, "%d", &pessoa->idPessoa) != 1) {
@@ -113,17 +113,7 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
     if (ptr == NULL) return 0;
     ptr++;
     
-    // Ler idadePessoa (segundo campo)
-    if (sscanf(ptr, "%d", &pessoa->idadePessoa) != 1) {
-        return 0;
-    }
-    
-    // Avançar para o próximo campo (pular vírgula)
-    ptr = strchr(ptr, ',');
-    if (ptr == NULL) return 0;
-    ptr++;
-    
-    // Ler nomePessoa (terceiro campo) - pode estar entre aspas
+    // Ler nomePessoa (segundo campo) - pode estar entre aspas
     char nomePessoaTemp[256];
     if (ptr[0] == '"') {
         // Campo entre aspas
@@ -137,15 +127,35 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
         if (ptr == NULL) return 0;
         ptr++;
     } else {
-        // Campo sem aspas
+        // Campo sem aspas - pode estar vazio
         if (sscanf(ptr, "%[^,]", nomePessoaTemp) != 1) {
-            return 0;
+            // Se não conseguiu ler, verificar se é campo vazio
+            if (ptr[0] == ',') {
+                strcpy(nomePessoaTemp, ""); // Campo vazio
+            } else {
+                return 0; // Erro real na leitura
+            }
         }
         // Avançar para o próximo campo
         ptr = strchr(ptr, ',');
         if (ptr == NULL) return 0;
         ptr++;
     }
+    
+    // Ler idadePessoa (terceiro campo) - pode estar vazio
+    if (sscanf(ptr, "%d", &pessoa->idadePessoa) != 1) {
+        // Se não conseguiu ler um inteiro, verificar se é campo vazio
+        if (ptr[0] == ',') {
+            pessoa->idadePessoa = -1; // Marcar como inválido/vazio
+        } else {
+            return 0; // Erro real na leitura
+        }
+    }
+    
+    // Avançar para o próximo campo (pular vírgula)
+    ptr = strchr(ptr, ',');
+    if (ptr == NULL) return 0;
+    ptr++;
     
     // Ler nomeUsuario (quarto campo) - pode estar entre aspas
     char nomeUsuarioTemp[256];
@@ -155,9 +165,14 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
             return 0;
         }
     } else {
-        // Campo sem aspas
+        // Campo sem aspas - pode estar vazio
         if (sscanf(ptr, "%s", nomeUsuarioTemp) != 1) {
-            return 0;
+            // Se não conseguiu ler, verificar se é campo vazio
+            if (ptr[0] == '\0' || ptr[0] == '\n' || ptr[0] == '\r') {
+                strcpy(nomeUsuarioTemp, ""); // Campo vazio
+            } else {
+                return 0; // Erro real na leitura
+            }
         }
     }
     
@@ -306,6 +321,8 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
         cabecalhoIndice.status = '0';
         fseek(indiceFile, 0, SEEK_SET);
         fwrite(&cabecalhoIndice.status, sizeof(char), 1, indiceFile);
+        // Posicionar cursor após o cabeçalho para escrever os registros
+        fseek(indiceFile, sizeof(CabecalhoIndice), SEEK_SET);
     }
 
     // Inicializar cabeçalho do arquivo pessoa
@@ -401,6 +418,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
 
     // Mostrar conteúdo dos arquivos
     binarioNaTela(binArquivo);
+    //esse ta com problema
     binarioNaTela(indiceArquivo);
 }
 
