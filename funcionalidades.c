@@ -243,7 +243,7 @@ void CREAT_INDEX(char *nomeArquivo) {
 // Função auxiliar para calcular o tamanho do registro
 int calcularTamanhoRegistro(RegistroPessoa *pessoa) {
     // Tamanho inclui todos os campos ap�s tamanhoRegistro
-    return 17 + pessoa->tamanhoNomePessoa + pessoa->tamanhoNomeUsuario;
+    return 1 + 4 + 4 + 4 + 4 + pessoa->tamanhoNomePessoa + 4 + pessoa->tamanhoNomeUsuario;
 }
 
 // Função auxiliar para escrever um registro pessoa no arquivo
@@ -315,6 +315,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
             cabecalhoIndice.lixo[i] = '$';
         }
         fwrite(&cabecalhoIndice, sizeof(CabecalhoIndice), 1, indiceFile);
+		
     } else {
         // Arquivo de índice existe, ler cabeçalho
         fread(&cabecalhoIndice, sizeof(CabecalhoIndice), 1, indiceFile);
