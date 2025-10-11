@@ -1,0 +1,58 @@
+# Makefile otimizado para WSL
+CC = gcc
+CFLAGS = -Wall -Wextra -std=c99 -O2
+LDFLAGS = 
+TARGET = programaTrab
+SOURCES = *.c
+
+# Compilacao padrao
+all: $(TARGET)
+
+$(TARGET): $(SOURCES)
+	$(CC) $(CFLAGS) -o $(TARGET) $(SOURCES) $(LDFLAGS)
+
+# Compilacao com debug
+debug: CFLAGS += -g -DDEBUG
+debug: $(TARGET)
+
+# Compilacao com sanitizers
+sanitize: CFLAGS += -fsanitize=address -fsanitize=undefined -g
+sanitize: LDFLAGS += -fsanitize=address -fsanitize=undefined
+sanitize: $(TARGET)
+
+# Execucao do programa
+run: $(TARGET)
+	./$(TARGET)
+
+# Teste interativo
+test: $(TARGET)
+	chmod +x testar_wsl.sh
+	./testar_wsl.sh
+
+# Teste automatico
+test-auto: $(TARGET)
+	chmod +x testar_automatico_wsl.sh
+	./testar_automatico_wsl.sh
+
+# Limpeza
+clean:
+	rm -f $(TARGET) *.o resultados_teste_*.txt
+
+# Instalacao de dependencias (se necessario)
+install-deps:
+	sudo apt-get update
+	sudo apt-get install -y build-essential
+
+# Help
+help:
+	@echo "Comandos disponiveis:"
+	@echo "  make          - Compila o programa"
+	@echo "  make debug    - Compila com debug"
+	@echo "  make sanitize - Compila com sanitizers"
+	@echo "  make run      - Executa o programa"
+	@echo "  make test     - Executa testes interativos"
+	@echo "  make test-auto- Executa testes automaticos"
+	@echo "  make clean    - Remove arquivos gerados"
+	@echo "  make install-deps - Instala dependencias"
+
+.PHONY: all debug sanitize run test test-auto clean install-deps help
