@@ -4,7 +4,7 @@
 int compararIdPessoa(const void *a, const void *b) {
     const RegistroIndice *regA = (const RegistroIndice *)a;
     const RegistroIndice *regB = (const RegistroIndice *)b;
-    
+
     if (regA->idPessoa < regB->idPessoa) return -1;
     if (regA->idPessoa > regB->idPessoa) return 1;
     return 0;
@@ -14,7 +14,7 @@ int compararIdPessoa(const void *a, const void *b) {
 Fun��o para imprimir dados salvos no arquivo em bin�rio
 (util para comparar saida no run codes)
 */
-void binarioNaTela(char *nomeArquivoBinario) { 
+void binarioNaTela(char *nomeArquivoBinario) {
 
 	/* Use essa função para comparação no run.codes. Lembre-se de ter fechado (fclose) o arquivo anteriormente.
 	*  Ela vai abrir de novo para leitura e depois fechar (você não vai perder pontos por isso se usar ela). */
@@ -77,42 +77,43 @@ void scan_quote_string(char *str) {
 	}
 }
 
+/*
 // Função para ler uma linha CSV usando scan_quote_string
 int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
     char linha[1024];
     char temp[1024];
     int pos = 0;
-    
+
     // Ler uma linha completa do arquivo CSV
     if (fgets(linha, sizeof(linha), csv) == NULL) {
         return 0; // Fim do arquivo
     }
-    
+
     // Remover quebra de linha
     linha[strcspn(linha, "\r\n")] = '\0';
-    
+
     // Verificar se a linha está vazia
     if (strlen(linha) == 0) {
         return 0;
     }
-    
+
     // Simular entrada do stdin para scan_quote_string
     // Criar um buffer temporário com a linha
     strcpy(temp, linha);
-    
+
     // Usar sscanf para extrair os campos separados por vírgula
     // Formato real: idPessoa,nomePessoa,idade,nomeUsuario
-    
+
     // Ler idPessoa (primeiro campo)
     if (sscanf(temp, "%d", &pessoa->idPessoa) != 1) {
         return 0;
     }
-    
+
     // Avançar para o próximo campo (pular vírgula)
     char *ptr = strchr(temp, ',');
     if (ptr == NULL) return 0;
     ptr++;
-    
+
     // Ler nomePessoa (segundo campo) - pode estar entre aspas
     char nomePessoaTemp[256];
     if (ptr[0] == '"') {
@@ -141,7 +142,7 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
         if (ptr == NULL) return 0;
         ptr++;
     }
-    
+
     // Ler idadePessoa (terceiro campo) - pode estar vazio
     if (sscanf(ptr, "%d", &pessoa->idadePessoa) != 1) {
         // Se não conseguiu ler um inteiro, verificar se é campo vazio
@@ -151,12 +152,12 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
             return 0; // Erro real na leitura
         }
     }
-    
+
     // Avançar para o próximo campo (pular vírgula)
     ptr = strchr(ptr, ',');
     if (ptr == NULL) return 0;
     ptr++;
-    
+
     // Ler nomeUsuario (quarto campo) - pode estar entre aspas
     char nomeUsuarioTemp[256];
     if (ptr[0] == '"') {
@@ -175,7 +176,7 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
             }
         }
     }
-    
+
     // Alocar memória e copiar strings
     pessoa->tamanhoNomePessoa = strlen(nomePessoaTemp);
     if (pessoa->tamanhoNomePessoa > 0) {
@@ -187,7 +188,7 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
     } else {
         pessoa->nomePessoa = NULL;
     }
-    
+
     pessoa->tamanhoNomeUsuario = strlen(nomeUsuarioTemp);
     if (pessoa->tamanhoNomeUsuario > 0) {
         pessoa->nomeUsuario = malloc(pessoa->tamanhoNomeUsuario + 1);
@@ -199,9 +200,113 @@ int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
     } else {
         pessoa->nomeUsuario = NULL;
     }
-    
+
     return 1; // Sucesso
 }
+*/
+
+
+// Função auxiliar para ler uma linha do CSV usando técnicas do utilidades.c
+int ler_csv(FILE *csv, RegistroPessoa *pessoa) {
+    char linha[1024];
+    char *campos[4];
+    int numCampos = 0;
+
+    // Ler uma linha completa
+    if (fgets(linha, sizeof(linha), csv) == NULL) {
+        return 0; // Fim do arquivo
+    }
+
+    // Remover quebra de linha e carriage return
+    linha[strcspn(linha, "\r\n")] = '\0';
+
+    // Verificar se a linha está vazia após remover quebras de linha
+    if (strlen(linha) == 0) {
+        return 0; // Linha vazia, fim do processamento
+    }
+
+    // Dividir a linha pelos campos separados por vírgula
+    // Usando técnica de parsing manual para tratar campos vazios
+    char *ptr = linha;
+    char *inicio = ptr;
+
+    for (int i = 0; i < 4; i++) {
+        inicio = ptr;
+
+        // Encontrar a próxima vírgula ou fim da string
+        while (*ptr && *ptr != ',') {
+            ptr++;
+        }
+
+        // Alocar e copiar o campo
+        int tamanho = ptr - inicio;
+        campos[i] = malloc(tamanho + 1);
+        strncpy(campos[i], inicio, tamanho);
+        campos[i][tamanho] = '\0';
+
+        numCampos++;
+
+        // Pular a vírgula se não for o fim da string
+        if (*ptr == ',') {
+            ptr++;
+        } else {
+            // Se chegou ao fim da string, preencher campos restantes como vazios
+            for (int j = i + 1; j < 4; j++) {
+                campos[j] = malloc(1);
+                campos[j][0] = '\0';
+                numCampos++;
+            }
+            break;
+        }
+    }
+
+    // Se não conseguiu ler pelo menos o primeiro campo, erro
+    if (numCampos == 0 || strlen(campos[0]) == 0) {
+        // Liberar memória antes de retornar erro
+        for (int i = 0; i < numCampos; i++) {
+            free(campos[i]);
+        }
+        return 0;
+    }
+
+    // Processar idPessoa (campo obrigatório)
+    pessoa->idPessoa = atoi(campos[0]);
+
+    // Processar nomePessoa (pode ser vazio)
+    if (numCampos > 1 && strlen(campos[1]) > 0) {
+        pessoa->tamanhoNomePessoa = strlen(campos[1]);
+        pessoa->nomePessoa = malloc(pessoa->tamanhoNomePessoa + 1);
+        strcpy(pessoa->nomePessoa, campos[1]);
+    } else {
+        pessoa->tamanhoNomePessoa = 0;
+        pessoa->nomePessoa = NULL;
+    }
+
+    // Processar idade (pode ser vazio)
+    if (numCampos > 2 && strlen(campos[2]) > 0) {
+        pessoa->idadePessoa = atoi(campos[2]);
+    } else {
+        pessoa->idadePessoa = -1; // Valor nulo
+    }
+
+    // Processar nomeUsuario (pode ser vazio)
+    if (numCampos > 3 && strlen(campos[3]) > 0) {
+        pessoa->tamanhoNomeUsuario = strlen(campos[3]);
+        pessoa->nomeUsuario = malloc(pessoa->tamanhoNomeUsuario + 1);
+        strcpy(pessoa->nomeUsuario, campos[3]);
+    } else {
+        pessoa->tamanhoNomeUsuario = 0;
+        pessoa->nomeUsuario = NULL;
+    }
+
+    // Liberar memória temporária dos campos
+    for (int i = 0; i < numCampos; i++) {
+        free(campos[i]);
+    }
+
+    return 1; // Sucesso
+}
+
 
 // Fun��o para criar um arquivo de �ndice prim�rio vazio
 void CREAT_INDEX(char *nomeArquivo) {
@@ -248,7 +353,7 @@ int calcularTamanhoRegistro(RegistroPessoa *pessoa) {
 
 // Função auxiliar para escrever um registro pessoa no arquivo
 void escreverRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
-    pessoa->removido = '0'; // 
+    pessoa->removido = '0'; //
     pessoa->tamanhoRegistro = calcularTamanhoRegistro(pessoa);
 
     // Escrever campos fixos
@@ -257,14 +362,14 @@ void escreverRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
     fwrite(&pessoa->idPessoa, sizeof(int), 1, arquivo);
     fwrite(&pessoa->idadePessoa, sizeof(int), 1, arquivo);
     fwrite(&pessoa->tamanhoNomePessoa, sizeof(int), 1, arquivo);
-    fwrite(&pessoa->tamanhoNomeUsuario, sizeof(int), 1, arquivo);
-
-
 
     // Escrever nomePessoa
     if (pessoa->tamanhoNomePessoa > 0) {
         fwrite(pessoa->nomePessoa, sizeof(char), pessoa->tamanhoNomePessoa, arquivo);
     }
+
+    fwrite(&pessoa->tamanhoNomeUsuario, sizeof(int), 1, arquivo);
+
 
     // Escrever nomeUsuario
     if (pessoa->tamanhoNomeUsuario > 0) {
@@ -308,32 +413,37 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
             fclose(binFile);
             return;
         }
-        
+
         // Inicializar cabeçalho do índice para arquivo novo
         cabecalhoIndice.status = '0';
         for (int i = 0; i < 11; i++) {
             cabecalhoIndice.lixo[i] = '$';
         }
-        fwrite(&cabecalhoIndice, sizeof(CabecalhoIndice), 1, indiceFile);
-		
+        fwrite(&cabecalhoIndice.status, 1 , 1, indiceFile);
+        fwrite(&cabecalhoIndice.lixo, 11 , 1, indiceFile);
+
     } else {
         // Arquivo de índice existe, ler cabeçalho
-        fread(&cabecalhoIndice, sizeof(CabecalhoIndice), 1, indiceFile);
+        fread(&cabecalhoIndice.status, 1 , 1, indiceFile);
+        fread(&cabecalhoIndice.lixo, 11 , 1, indiceFile);
         cabecalhoIndice.status = '0';
         fseek(indiceFile, 0, SEEK_SET);
         fwrite(&cabecalhoIndice.status, sizeof(char), 1, indiceFile);
         // Posicionar cursor após o cabeçalho para escrever os registros
-        fseek(indiceFile, sizeof(CabecalhoIndice), SEEK_SET);
+        fseek(indiceFile, 12, SEEK_SET);
     }
 
     // Inicializar cabeçalho do arquivo pessoa
     cabecalhoPessoa.status = '0';
     cabecalhoPessoa.quantidadePessoas = 0;
     cabecalhoPessoa.quantidadeRemovidos = 0;
-    cabecalhoPessoa.proxByteOffset = sizeof(CabecalhoPessoa); // Tamanho do cabeçalho
+    cabecalhoPessoa.proxByteOffset = 17; // Tamanho do cabeçalho
 
     // Escrever cabeçalho inicial do arquivo pessoa
-    fwrite(&cabecalhoPessoa, sizeof(CabecalhoPessoa), 1, binFile);
+    fwrite(&cabecalhoPessoa.status, sizeof(char), 1, binFile);
+    fwrite(&cabecalhoPessoa.quantidadePessoas, sizeof(int), 1, binFile);
+    fwrite(&cabecalhoPessoa.quantidadeRemovidos, sizeof(int), 1, binFile);
+    fwrite(&cabecalhoPessoa.proxByteOffset, sizeof(long long), 1, binFile);
 
     // Pular a primeira linha (cabeçalho) do CSV
     char linha[1024];
@@ -343,7 +453,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
     RegistroIndice *registrosIndice = NULL;
     int capacidade = 100;
     int tamanhoAtual = 0;
-    
+
     // Alocar array inicial
     registrosIndice = malloc(capacidade * sizeof(RegistroIndice));
     if (registrosIndice == NULL) {
@@ -405,7 +515,13 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
     cabecalhoPessoa.proxByteOffset = ftell(binFile);
 
     fseek(binFile, 0, SEEK_SET);
-    fwrite(&cabecalhoPessoa, sizeof(CabecalhoPessoa), 1, binFile);
+
+     // Escrever novamente cabeçalho do arquivo pessoa
+    fwrite(&cabecalhoPessoa.status, sizeof(char), 1, binFile);
+    fwrite(&cabecalhoPessoa.quantidadePessoas, sizeof(int), 1, binFile);
+    fwrite(&cabecalhoPessoa.quantidadeRemovidos, sizeof(int), 1, binFile);
+    fwrite(&cabecalhoPessoa.proxByteOffset, sizeof(long long), 1, binFile);
+
 
     // Atualizar status do arquivo de índice para fechado
     cabecalhoIndice.status = '1';
@@ -443,6 +559,10 @@ int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
 
     if (pessoa->tamanhoNomePessoa > 0) {
         pessoa->nomePessoa = malloc(pessoa->tamanhoNomePessoa + 1);
+        if (pessoa->nomePessoa == NULL) { // ADICIONE ESTA VERIFICAÇÃO
+        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa.\n");
+        printf("ERRO: Falha ao alocar memória para ID %d",pessoa->idPessoa);
+        return 0;} // Para a leitura
         if (fread(pessoa->nomePessoa, sizeof(char), pessoa->tamanhoNomePessoa, arquivo) != pessoa->tamanhoNomePessoa) {
             free(pessoa->nomePessoa);
             return 0;
@@ -460,6 +580,11 @@ int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
 
     if (pessoa->tamanhoNomeUsuario > 0) {
         pessoa->nomeUsuario = malloc(pessoa->tamanhoNomeUsuario + 1);
+        if (pessoa->nomeUsuario == NULL) { // ADICIONE ESTA VERIFICAÇÃO
+        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa.\n");
+        printf("ERRO: Falha ao alocar memória para ID %d",pessoa->idPessoa);
+        return 0;} // Para a leitura
+
         if (fread(pessoa->nomeUsuario, sizeof(char), pessoa->tamanhoNomeUsuario, arquivo) != pessoa->tamanhoNomeUsuario) {
             if (pessoa->nomePessoa) free(pessoa->nomePessoa);
             free(pessoa->nomeUsuario);
@@ -488,7 +613,7 @@ void SELECT(char *binArquivo) {
     }
 
     // Ler cabe�alho
-    /*if (fread(&cabecalho, sizeof(CabecalhoPessoa), 1, arquivo) != 1) {
+    /*if (fread(&cabecalho, sizeofk(CabecalhoPessoa), 1, arquivo) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
         return;
@@ -549,7 +674,7 @@ void SELECT(char *binArquivo) {
             printf("Usuario: %s\n", pessoa.nomeUsuario ? pessoa.nomeUsuario : "-");
 
             // Linha em branco entre registros
-            printf("\n\n");
+            printf("\n");
         }
 
         // Liberar mem�ria alocada
@@ -587,7 +712,11 @@ int buscaSequencial(char *binArquivo, char *nomeCampo, char *valorBusca) {
     }
 
     // Ler cabe�alho
-    if (fread(&cabecalho, sizeof(CabecalhoPessoa), 1, arquivo) != 1) {
+    if ( fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
+    fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1 ||
+    fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
+    fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1
+) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
         return 0;
@@ -695,8 +824,8 @@ void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
         *separador = '\0';
         char *nomeCampoPtr = entrada;
 
-        // Verificar se h� numera��o no in�cio (ex: "1 idPessoa=96")
-        // Pular n�meros e espa�os no in�cio
+        // Verificar se há numeração no início (ex: "1 idPessoa=96")
+        // Pular n�meros e espaços no início
         while (*nomeCampoPtr && (isdigit(*nomeCampoPtr) || isspace(*nomeCampoPtr))) {
             nomeCampoPtr++;
         }
@@ -723,12 +852,13 @@ void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
         }
 
         totalEncontrados += encontrados;
+        if (encontrados == 0) printf("Registro inexistente.\n\n");
     }
 
-    // Se nenhum registro foi encontrado em todas as buscas
-    if (totalEncontrados == 0) {
-        printf("Registro inexistente.\n");
-    }
+    // Se nenhum registro foi encontrado
+   // if (totalEncontrados == 0) {
+       // printf("Registro inexistente.\n");
+   // }
 }
 
 

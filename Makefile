@@ -1,5 +1,5 @@
 all:
-	gcc -o programaTrab *.c -lmd
+	gcc -o programaTrab main.c funcionalidades.c -lm
 
 run:
 	./programaTrab

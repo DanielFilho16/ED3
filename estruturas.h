@@ -7,8 +7,7 @@
 #include <stdint.h>
 #include <ctype.h>
 
-// Estrutura do cabeï¿½alho do arquivo pessoa.bin
-//checado
+// Estrutura do cabeçalho do arquivo pessoa.bin
 typedef struct {
     char status;                // 1 byte
     int quantidadePessoas;      // 4 bytes
@@ -17,45 +16,42 @@ typedef struct {
 } CabecalhoPessoa;
 
 // Estrutura do registro pessoa
-//checado
 typedef struct {
-    char removido;              // 1 byte-
-    int tamanhoRegistro;        // 4 bytes-
-    int idPessoa;              // 4 bytes -
-    int idadePessoa;           // 4 bytes-
-    int tamanhoNomePessoa;     // 4 bytes-
-    char *nomePessoa;          // variï¿½vel-
-    int tamanhoNomeUsuario;    // 4 bytes-
-    char *nomeUsuario;         // variï¿½vel-
+    char removido;              // 1 byte
+    int tamanhoRegistro;        // 4 bytes
+    int idPessoa;              // 4 bytes
+    int idadePessoa;           // 4 bytes
+    int tamanhoNomePessoa;     // 4 bytes
+    char *nomePessoa;          // variável
+    int tamanhoNomeUsuario;    // 4 bytes
+    char *nomeUsuario;         // variável
 } RegistroPessoa;
 
-// Estrutura do cabeï¿½alho do ï¿½ndice primï¿½rio (indexaPessoa.bin)
+// Estrutura do cabeçalho do índice primário (indexaPessoa.bin)
 typedef struct {
     char status;               // 1 byte
     char lixo[11];            // 11 bytes de lixo ($) para completar 12 bytes
 } CabecalhoIndice;
 
-// Estrutura do registro do ï¿½ndice
+// Estrutura do registro do índice
 typedef struct {
     int idPessoa;             // 4 bytes
-    long long byteOffset;     //8 bytes
+    //int byteOffset;           // 4 bytes
+    long long byteOffset;            //8 bytes
 } RegistroIndice;
 
-// Declaraï¿½ï¿½o das funï¿½ï¿½es
+// Declaração das funções
 void CREAT_INDEX(char *nomeArquivo);
 void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo);
 void SELECT(char *binArquivo);
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n);
 
-// Funï¿½ï¿½o auxiliar para leitura de registros
+// Função auxiliar para leitura de registros
 int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa);
 
-// Funï¿½ï¿½es do arquivo utilidades.c
+// Funções do arquivo utilidades.c
 void binarioNaTela(char *nomeArquivoBinario);
 void scan_quote_string(char *str);
-
-// Funo auxiliar para ler CSV usando scan_quote_string
-int ler_csv(FILE *csv, RegistroPessoa *pessoa);
 
 #endif
 
