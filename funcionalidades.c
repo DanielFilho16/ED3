@@ -348,7 +348,7 @@ void CREAT_INDEX(char *nomeArquivo) {
 // Função auxiliar para calcular o tamanho do registro
 int calcularTamanhoRegistro(RegistroPessoa *pessoa) {
     // Tamanho inclui todos os campos ap�s tamanhoRegistro
-    return 1 + 4 + 4 + 4 + 4 + pessoa->tamanhoNomePessoa + 4 + pessoa->tamanhoNomeUsuario;
+    return 4 + 4 + 4 + pessoa->tamanhoNomePessoa + 4 + pessoa->tamanhoNomeUsuario;
 }
 
 // Função auxiliar para escrever um registro pessoa no arquivo
