@@ -7,7 +7,7 @@
 #include <stdint.h>
 #include <ctype.h>
 
-// Estrutura do cabeçalho do arquivo pessoa.bin
+// cabecalho do arquivo pessoa.bin
 typedef struct {
     char status;                // 1 byte
     int quantidadePessoas;      // 4 bytes
@@ -15,41 +15,38 @@ typedef struct {
     long long proxByteOffset;   // 8 bytes
 } CabecalhoPessoa;
 
-// Estrutura do registro pessoa
+// estrutura do registro pessoa
 typedef struct {
     char removido;              // 1 byte
     int tamanhoRegistro;        // 4 bytes
     int idPessoa;              // 4 bytes
     int idadePessoa;           // 4 bytes
     int tamanhoNomePessoa;     // 4 bytes
-    char *nomePessoa;          // variável
+    char *nomePessoa;          // variï¿½vel
     int tamanhoNomeUsuario;    // 4 bytes
-    char *nomeUsuario;         // variável
+    char *nomeUsuario;         // variï¿½vel
 } RegistroPessoa;
 
-// Estrutura do cabeçalho do índice primário (indexaPessoa.bin)
+// estrutura do indice
 typedef struct {
     char status;               // 1 byte
-    char lixo[11];            // 11 bytes de lixo ($) para completar 12 bytes
+    char lixo[11];            // 11 bytes de lixo 
 } CabecalhoIndice;
 
-// Estrutura do registro do índice
+// Estrutura do registro do indice
 typedef struct {
     int idPessoa;             // 4 bytes
-    //int byteOffset;           // 4 bytes
-    long long byteOffset;            //8 bytes
+    long long byteOffset;     //8 bytes
 } RegistroIndice;
 
-// Declaração das funções
+//funÃ§Ãµes
 void CREAT_INDEX(char *nomeArquivo);
 void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo);
 void SELECT(char *binArquivo);
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n);
 
-// Função auxiliar para leitura de registros
+// funÃ§Ãµes auxiliares
 int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa);
-
-// Funções do arquivo utilidades.c
 void binarioNaTela(char *nomeArquivoBinario);
 void scan_quote_string(char *str);
 
