@@ -166,7 +166,7 @@ void CREAT_INDEX(char *nomeArquivo) {
 
     if (arquivo == NULL) { 
         printf("Falha no processamento do arquivo.\n");
-        return;
+        exit (0);
     }
 
     CabecalhoIndice cabecalho;
@@ -235,14 +235,14 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
     csv = fopen(csvArquivo, "r");
     if (csv == NULL) {
         printf("Falha no processamento do arquivo.\n");
-        return;
+        exit (0);
     }
 
     binFile = fopen(binArquivo, "wb");
     if (binFile == NULL) {
         printf("Falha no processamento do arquivo.\n");
         fclose(csv);
-        return;
+        exit (0);
     }
 
     indiceFile = fopen(indiceArquivo, "r+b");
@@ -252,7 +252,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
             printf("Falha no processamento do arquivo.\n");
             fclose(csv);
             fclose(binFile);
-            return;
+            exit (0);
         }
 
         cabecalhoIndice.status = '0';
@@ -296,7 +296,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
         fclose(csv);
         fclose(binFile);
         fclose(indiceFile);
-        return;
+        exit (0);
     }
 
     // ler cada linha do CSV
@@ -312,7 +312,7 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
                 fclose(csv);
                 fclose(binFile);
                 fclose(indiceFile);
-                return;
+                exit (0);
             }
         }
 
@@ -424,35 +424,35 @@ void SELECT(char *binArquivo) {
     arquivo = fopen(binArquivo, "rb");
     if (arquivo == NULL) {
         printf("Falha no processamento do arquivo.\n");
-        return;
+        exit (0);
     }
 
 
     if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return;
+        exit (0);
     }
     if (fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return;
+        exit (0);
     }
     if (fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return;
+        exit (0);
     }
     if (fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return;
+        exit (0);
     }
     // confere se o arquivo está consistente
     if (cabecalho.status != '1') {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return;
+        exit (0);
     }
 
     // Percorrer todos os registros sequencialmente
@@ -507,7 +507,7 @@ int buscaSequencial(char *binArquivo, char *nomeCampo, char *valorBusca) {
     arquivo = fopen(binArquivo, "rb");
     if (arquivo == NULL) {
         printf("Falha no processamento do arquivo.\n");
-        return 0;
+        exit (0);
     }
 
     if ( fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
@@ -517,13 +517,13 @@ int buscaSequencial(char *binArquivo, char *nomeCampo, char *valorBusca) {
 ) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return 0;
+        exit (0);
     }
 
     if (cabecalho.status != '1') {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
-        return 0;
+        exit (0);
     }
 
     while (lerRegistroPessoa(arquivo, &pessoa)) {
@@ -593,7 +593,7 @@ void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
 
         if (fgets(entrada, sizeof(entrada), stdin) == NULL) {
             printf("Falha no processamento do arquivo.\n");
-            return;
+            exit (0);
         }
 
         entrada[strcspn(entrada, "\r\n")] = '\0';
@@ -607,7 +607,7 @@ void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
         char *separador = strchr(entrada, '=');
         if (separador == NULL) {
             printf("Falha no processamento do arquivo.\n");
-            return;
+            exit (0);
         }
 
         // Separ nomeCampo e valorCampo
