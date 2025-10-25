@@ -3,6 +3,7 @@
 // Aluno: Kaue Antonio Maranzano de Araujo --- N USP: 14669684
 
 #include "estruturas.h"
+#include "busca.h"
 
 int main() {
 

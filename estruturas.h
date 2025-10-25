@@ -78,6 +78,11 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado);
 // Funções auxiliares para DELETE
 int buscarEMarcarRemocao(char *binArquivo, char *nomeCampo, char *valorBusca);
 
+// Novas funções para DELETE conforme requisitos
+RegistroIndice* CarregarIndiceEmMemoria(char *nomeArquivo, int *tamanho);
+void RemoverDoIndice(RegistroIndice **registros, int *tamanho, int idPessoa);
+void ReescreverIndice(char *nomeArquivo, RegistroIndice *registros, int tamanho);
+
 // Funções auxiliares para INSERT
 int verificarIdExistente(char *binArquivo, int idPessoa);
 int inserirRegistroPessoa(char *binArquivo, RegistroPessoa *pessoa);
@@ -98,6 +103,25 @@ int compararRegistrosSegue(const void *a, const void *b);
 // Funções auxiliares para JOIN
 int buscaBinariaSegue(FILE *arquivo, int idPessoaQueSegue, RegistroSegue *resultados, int *quantidadeResultados);
 int buscarPessoaParaJoin(char *binArquivo, char *nomeCampo, char *valorBusca, RegistroPessoa *pessoa);
+
+// Novas funções para JOIN conforme orientações
+RegistroSegue** LerRegistrosSegue(char *nomeArquivo, int *tamanho);
+void LiberarRegistrosSegue(RegistroSegue **registros, int tamanho);
+int BuscaBinariaSegue(RegistroSegue **registros, int tamanho, int idPessoaQueSegue);
+
+// Função auxiliar para busca binária no índice
+int buscaBinariaIndice(char *indiceArquivo, int idPessoa, long long *byteOffset);
+
+// Estrutura para resultado de busca
+typedef struct {
+    RegistroPessoa *pessoas;
+    int quantidade;
+    long long *posicoes; // Posições dos registros no arquivo
+} ResultadoBusca;
+
+// Funções de busca modularizadas
+ResultadoBusca* buscarPessoas(char *binArquivo, char *indiceArquivo, char *nomeCampo, char *valorBusca);
+void liberarResultadoBusca(ResultadoBusca *resultado);
 
 #endif
 
