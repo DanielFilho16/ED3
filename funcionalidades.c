@@ -1,6 +1,8 @@
 #include "estruturas.h"
 #include "busca.h"
 
+#define debug 1
+
 // ordena idPessoa para o indice
 int compararIdPessoa(const void *a, const void *b) {
     const RegistroIndice *regA = (const RegistroIndice *)a;
@@ -495,156 +497,6 @@ void SELECT(char *binArquivo) {
 }
 
 
-// Função auxiliar para busca binária no índice por idPessoa
-int buscaBinariaIndice(char *indiceArquivo, int idPessoa, long long *byteOffset) {
-    FILE *arquivo;
-    CabecalhoIndice cabecalho;
-    RegistroIndice registro;
-    long long inicio, fim, meio;
-    int quantidadeRegistros;
-    
-    arquivo = fopen(indiceArquivo, "rb");
-    if (arquivo == NULL) {
-        return 0;
-    }
-    
-    // Ler cabeçalho
-    if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-        fread(&cabecalho.lixo, 11, 1, arquivo) != 1) {
-        fclose(arquivo);
-        return 0;
-    }
-    
-    if (cabecalho.status != '1') {
-        fclose(arquivo);
-        return 0;
-    }
-    
-    // Calcular quantidade de registros
-    fseek(arquivo, 0, SEEK_END);
-    long long tamanhoArquivo = ftell(arquivo);
-    quantidadeRegistros = (tamanhoArquivo - 12) / 12;
-    
-    if (quantidadeRegistros <= 0) {
-        fclose(arquivo);
-        return 0;
-    }
-    
-    // Busca binária
-    inicio = 12; // Após cabeçalho
-    fim = 12 + (quantidadeRegistros - 1) * 12;
-    
-    while (inicio <= fim) {
-        meio = inicio + ((fim - inicio) / 2);
-        meio = (meio / 12) * 12; // Alinhar com início de registro
-        
-        fseek(arquivo, meio, SEEK_SET);
-        if (fread(&registro.idPessoa, sizeof(int), 1, arquivo) != 1 ||
-            fread(&registro.byteOffset, sizeof(long long), 1, arquivo) != 1) {
-            fclose(arquivo);
-            return 0;
-        }
-        
-        if (registro.idPessoa == idPessoa) {
-            *byteOffset = registro.byteOffset;
-            fclose(arquivo);
-            return 1;
-        } else if (registro.idPessoa < idPessoa) {
-            inicio = meio + 12;
-        } else {
-            fim = meio - 12;
-        }
-    }
-    
-    fclose(arquivo);
-    return 0;
-}
-
-// função auxiliar para busca sequencial
-int buscaSequencial(char *binArquivo, char *nomeCampo, char *valorBusca) {
-    FILE *arquivo;
-    CabecalhoPessoa cabecalho;
-    RegistroPessoa pessoa;
-    int encontrados = 0;
-
-    arquivo = fopen(binArquivo, "rb");
-    if (arquivo == NULL) {
-        printf("Falha no processamento do arquivo.\n");
-        exit (0);
-    }
-
-    if ( fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-    fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1 ||
-    fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-    fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1
-) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit (0);
-    }
-
-    if (cabecalho.status != '1') {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit (0);
-    }
-
-    while (lerRegistroPessoa(arquivo, &pessoa)) {
-        if (pessoa.removido == '0') {
-            int match = 0;
-
-            if (strcmp(nomeCampo, "idPessoa") == 0) {
-                int idProcurado = atoi(valorBusca);
-                if (pessoa.idPessoa == idProcurado) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "nomePessoa") == 0) {
-                if (pessoa.nomePessoa && strcmp(pessoa.nomePessoa, valorBusca) == 0) {
-                    match = 1;
-                } else if (!pessoa.nomePessoa && strlen(valorBusca) == 0) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "idade") == 0 || strcmp(nomeCampo, "idadePessoa") == 0) {
-                int idadeProcurada = atoi(valorBusca);
-                if (pessoa.idadePessoa == idadeProcurada) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "nomeUsuario") == 0) {
-                if (pessoa.nomeUsuario && strcmp(pessoa.nomeUsuario, valorBusca) == 0) {
-                    match = 1;
-                } else if (!pessoa.nomeUsuario && strlen(valorBusca) == 0) {
-                    match = 1;
-                }
-            }
-
-            if (match) {
-                printf("Dados da pessoa de codigo %d\n", pessoa.idPessoa);
-                printf("Nome: %s\n", pessoa.nomePessoa ? pessoa.nomePessoa : "-");
-                if (pessoa.idadePessoa == -1) {
-                    printf("Idade: -\n");
-                } else {
-                    printf("Idade: %d\n", pessoa.idadePessoa);
-                }
-                printf("Usuario: %s\n", pessoa.nomeUsuario ? pessoa.nomeUsuario : "-");
-                printf("\n");
-                encontrados++;
-            }
-        }
-
-        if (pessoa.nomePessoa) {
-            free(pessoa.nomePessoa);
-            pessoa.nomePessoa = NULL;
-        }
-        if (pessoa.nomeUsuario) {
-            free(pessoa.nomeUsuario);
-            pessoa.nomeUsuario = NULL;
-        }
-    }
-
-    fclose(arquivo);
-    return encontrados;
-}
-
 // função 04
 void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
     int totalEncontrados = 0;
@@ -725,143 +577,40 @@ void SELECT_WHERE(char *binArquivo, char *indiceArquivo, int n) {
 ----------------------------------------- COMEÇANDO PARTE 2 -------------------------------------------------------------
 */
 
-// Função auxiliar para buscar e marcar registros para remoção
-int buscarEMarcarRemocao(char *binArquivo, char *nomeCampo, char *valorBusca) {
-    FILE *arquivo;
-    CabecalhoPessoa cabecalho;
-    RegistroPessoa pessoa;
-    int registrosRemovidos = 0;
-    long long posicaoAtual;
-
-    arquivo = fopen(binArquivo, "r+b");
-    if (arquivo == NULL) {
-        printf("Falha no processamento do arquivo.\n");
-        exit (0);
-    }
-
-    // Ler cabeçalho
-    if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit (0);
-    }
-
-    if (cabecalho.status != '1') {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit (0);
-    }
-
-    // Marcar arquivo como inconsistente durante modificação
-    cabecalho.status = '0';
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite(&cabecalho.status, sizeof(char), 1, arquivo);
-    fseek(arquivo, 17, SEEK_SET); // Voltar para início dos registros
-
-    // Percorrer todos os registros sequencialmente
-    while (lerRegistroPessoa(arquivo, &pessoa)) {
-        if (pessoa.removido == '0') { // Se não está removido
-            int match = 0;
-
-            // Verificar critério de busca
-            if (strcmp(nomeCampo, "idPessoa") == 0) {
-                int idProcurado = atoi(valorBusca);
-                if (pessoa.idPessoa == idProcurado) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "nomePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.nomePessoa == NULL || strlen(pessoa.nomePessoa) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa.nomePessoa && strcmp(pessoa.nomePessoa, valorBusca) == 0) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "idade") == 0 || strcmp(nomeCampo, "idadePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.idadePessoa == -1) {
-                        match = 1;
-                    }
-                } else {
-                    int idadeProcurada = atoi(valorBusca);
-                    if (pessoa.idadePessoa == idadeProcurada) {
-                        match = 1;
-                    }
-                }
-            } else if (strcmp(nomeCampo, "nomeUsuario") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.nomeUsuario == NULL || strlen(pessoa.nomeUsuario) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa.nomeUsuario && strcmp(pessoa.nomeUsuario, valorBusca) == 0) {
-                    match = 1;
-                }
-            }
-
-            if (match) {
-                // Marcar como removido
-                posicaoAtual = ftell(arquivo) - pessoa.tamanhoRegistro - 5; // Posição do campo removido
-                fseek(arquivo, posicaoAtual, SEEK_SET);
-                char removido = '1';
-                fwrite(&removido, sizeof(char), 1, arquivo);
-                fseek(arquivo, 0, SEEK_END); // Voltar para o final
-                
-                registrosRemovidos++;
-                cabecalho.quantidadeRemovidos++;
-            }
-        }
-
-        // Liberar memória
-        if (pessoa.nomePessoa) {
-            free(pessoa.nomePessoa);
-            pessoa.nomePessoa = NULL;
-        }
-        if (pessoa.nomeUsuario) {
-            free(pessoa.nomeUsuario);
-            pessoa.nomeUsuario = NULL;
-        }
-    }
-
-    // Atualizar cabeçalho
-    cabecalho.status = '1';
-    fseek(arquivo, 0, SEEK_SET);
-    fwrite(&cabecalho.status, sizeof(char), 1, arquivo);
-    fwrite(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo);
-    fwrite(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo);
-    fwrite(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo);
-
-    fclose(arquivo);
-    return registrosRemovidos;
-}
-
 // Função 5 - DELETE FROM
 
 
 // Função para carregar índice em memória
 RegistroIndice* CarregarIndiceEmMemoria(char *nomeArquivo, int *tamanho) {
+    
+    if(debug) printf("carregando indice em memoria...\n");
+    
     FILE *arquivo;
     CabecalhoIndice cabecalho;
     RegistroIndice *registros = NULL;
     int capacidade = 1000;
     int quantidadeRegistros = 0;
-    
+     
+
+
     arquivo = fopen(nomeArquivo, "rb");
+
     if (arquivo == NULL) {
-        return NULL;
+        printf("Falha no processamento do arquivo.\n");
+        exit(0);
     }
     
     // Ler cabeçalho
     if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
         fread(&cabecalho.lixo, 11, 1, arquivo) != 1) {
         fclose(arquivo);
+        if(debug) printf("erro ao ler o cabeçalho\n");
         return NULL;
     }
     
     if (cabecalho.status != '1') {
         fclose(arquivo);
+        if(debug) printf("arquivo inconsistente\n");
         return NULL;
     }
     
@@ -873,6 +622,7 @@ RegistroIndice* CarregarIndiceEmMemoria(char *nomeArquivo, int *tamanho) {
     if (totalRegistros <= 0) {
         fclose(arquivo);
         *tamanho = 0;
+        if(debug) printf("nenhum registro no indice\n");
         return NULL;
     }
     
@@ -880,6 +630,7 @@ RegistroIndice* CarregarIndiceEmMemoria(char *nomeArquivo, int *tamanho) {
     registros = malloc(totalRegistros * sizeof(RegistroIndice));
     if (registros == NULL) {
         fclose(arquivo);
+        if(debug) printf("falha ao alocar memoria para os registros\n");
         return NULL;
     }
     
@@ -890,13 +641,16 @@ RegistroIndice* CarregarIndiceEmMemoria(char *nomeArquivo, int *tamanho) {
             fread(&registros[i].byteOffset, sizeof(long long), 1, arquivo) != 1) {
             free(registros);
             fclose(arquivo);
+            if(debug) printf("erro ao ler os registros do indice\n");
             return NULL;
+
         }
         quantidadeRegistros++;
     }
     
     fclose(arquivo);
     *tamanho = quantidadeRegistros;
+    if(debug) printf("indice carregado em memoria com %d registros\n", quantidadeRegistros);
     return registros;
 }
 
@@ -955,13 +709,27 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
     
     // Carregar índice em memória
     int tamanhoIndice;
+
+    if(debug) printf("Carregando indice em memoria para DELETE...\n");
+
     RegistroIndice *registrosIndice = CarregarIndiceEmMemoria(indiceArquivo, &tamanhoIndice);
     
+    if(debug) printf("Indice carregado com %d registros\n", tamanhoIndice);
+
     if (registrosIndice == NULL) {
         printf("Falha no processamento do arquivo.\n");
         exit(0);
     }
     
+    FILE *arquivo;
+
+    if(binArquivo == NULL || !(arquivo = fopen(binArquivo, "rb"))) {
+		printf("Falha no processamento do arquivo.\n");
+		exit (0);
+	} else fclose(arquivo);
+
+    
+    arquivo = fopen(binArquivo, "r+b");
     for (int i = 0; i < n; i++) {
         char entrada[300];
         char nomeCampo[100];
@@ -984,12 +752,14 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
         char *ptr = entrada;
         while (*ptr && (isdigit(*ptr) || isspace(*ptr))) {
             ptr++;
+            if(debug) printf("pulando numero da linha: %c\n", *(ptr-1));
         }
         
         // Procura símbolo = para separar campo e valor
         char *separador = strchr(ptr, '=');
         if (separador == NULL) {
             printf("Falha no processamento do arquivo.\n");
+            if(debug) printf("Erro ao encontrar o separador '=' na entrada: %s\n", entrada);
             free(registrosIndice);
             exit(0);
         }
@@ -1005,6 +775,7 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
         
         strcpy(nomeCampo, nomeCampoPtr);
         strcpy(valorBusca, separador + 1);
+        if(debug) printf("Campo: %s, Valor: %s\n", nomeCampo, valorBusca);
         
         // Se tiver entre aspas, remover as aspas
         if (valorBusca[0] == '"' && valorBusca[strlen(valorBusca) - 1] == '"') {
@@ -1017,7 +788,6 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
         
         if (resultado != NULL && resultado->quantidade > 0) {
             // Marcar registros como removidos no arquivo de dados
-            FILE *arquivo = fopen(binArquivo, "r+b");
             if (arquivo != NULL) {
                 CabecalhoPessoa cabecalho;
                 fread(&cabecalho.status, sizeof(char), 1, arquivo);
@@ -1055,7 +825,11 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
                 fwrite(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo);
                 fwrite(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo);
                 
-                fclose(arquivo);
+                
+            }
+            else {
+                printf("Falha no processamento do arquivo.\n");
+                exit(0);
             }
         }
         
@@ -1063,8 +837,10 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
         if (resultado != NULL) {
             liberarResultadoBusca(resultado);
         }
-    }
+    } fclose(arquivo);
     
+    if(debug) binarioNaTela(indiceArquivo);
+
     // Reescrever arquivo de índice com registros não removidos
     ReescreverIndice(indiceArquivo, registrosIndice, tamanhoIndice);
     
@@ -1282,17 +1058,22 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
 void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
     int n;
     scanf("%d", &n);
+    RegistroPessoa pessoa;
 
     for (int i = 0; i < n; i++) {
         char linha[500];
         char campos[4][200];
         int numCampos = 0;
-        RegistroPessoa pessoa;
+        
         long long byteOffset;
+
+
+
 
         // Ler linha de entrada
         if (fgets(linha, sizeof(linha), stdin) == NULL) {
             printf("Falha no processamento do arquivo.\n");
+            if(debug) printf("Erro ao ler a linha  %d de entrada para INSERT_INTO\n",i+1);
             exit(0);
         }
 
@@ -1305,7 +1086,9 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
 
         // Pular número da linha (ex: "1 ", "2 ", etc.)
         char *ptr = linha;
-        while (*ptr && (isdigit(*ptr) || isspace(*ptr))) {
+        int numerosPulados = 0;
+        while (*ptr && ((isdigit(*ptr) && (!numerosPulados)) || isspace(*ptr))) {
+            if(isdigit(*ptr)) numerosPulados++;
             ptr++;
         }
 
@@ -1319,12 +1102,15 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             *(end + 1) = '\0';
 
             strcpy(campos[numCampos], token);
+            if(debug) printf("Campo %d: %s\n", numCampos + 1, campos[numCampos]);
             numCampos++;
             token = strtok(NULL, ",");
         }
 
         if (numCampos < 4) {
             printf("Falha no processamento do arquivo.\n");
+            if(debug) printf("Erro: número insuficiente de campos (%d) na linha %d para INSERT_INTO\n",numCampos, i + 1);
+
             exit(0);
         }
 
@@ -1334,6 +1120,7 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
         // Verificar se ID já existe
         if (verificarIdExistente(binArquivo, pessoa.idPessoa)) {
             printf("Falha no processamento do arquivo.\n");
+            if(debug) printf("Erro: ID %d já existe no arquivo para INSERT_INTO\n", pessoa.idPessoa);
             exit(0);
         }
 
@@ -1345,12 +1132,13 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             // Remover aspas se existirem
             if (campos[1][0] == '"' && campos[1][strlen(campos[1])-1] == '"') {
                 campos[1][strlen(campos[1])-1] = '\0';
-                memmove(campos[1], campos[1] + 1, strlen(campos[1]));
+                memmove(campos[1], campos[1] + 1, strlen(campos[1]) + 1 );
             }
             pessoa.tamanhoNomePessoa = strlen(campos[1]);
             pessoa.nomePessoa = malloc(pessoa.tamanhoNomePessoa + 1);
             if (pessoa.nomePessoa == NULL) {
                 printf("Falha no processamento do arquivo.\n");
+                if(debug) printf("Erro: Falha ao alocar memória para nomePessoa no INSERT_INTO\n");
                 exit(0);
             }
             strcpy(pessoa.nomePessoa, campos[1]);
@@ -1371,13 +1159,14 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             // Remover aspas se existirem
             if (campos[3][0] == '"' && campos[3][strlen(campos[3])-1] == '"') {
                 campos[3][strlen(campos[3])-1] = '\0';
-                memmove(campos[3], campos[3] + 1, strlen(campos[3]));
+                memmove(campos[3], campos[3] + 1, strlen(campos[3]) + 1);
             }
             pessoa.tamanhoNomeUsuario = strlen(campos[3]);
             pessoa.nomeUsuario = malloc(pessoa.tamanhoNomeUsuario + 1);
             if (pessoa.nomeUsuario == NULL) {
                 if (pessoa.nomePessoa) free(pessoa.nomePessoa);
                 printf("Falha no processamento do arquivo.\n");
+                if(debug) printf("Erro: Falha ao alocar memória para nomeUsuario no INSERT_INTO\n");
                 exit(0);
             }
             strcpy(pessoa.nomeUsuario, campos[3]);
@@ -1403,118 +1192,6 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
     binarioNaTela(indiceArquivo);
 }
 
-// Função auxiliar para buscar registros que atendem ao critério
-int buscarRegistrosParaAtualizacao(char *binArquivo, char *nomeCampo, char *valorBusca, long long **posicoes, int *quantidade) {
-    FILE *arquivo;
-    CabecalhoPessoa cabecalho;
-    RegistroPessoa pessoa;
-    long long *posicoesEncontradas = NULL;
-    int capacidade = 100;
-    int tamanho = 0;
-    long long posicaoAtual;
-
-    arquivo = fopen(binArquivo, "rb");
-    if (arquivo == NULL) {
-        printf("Falha no processamento do arquivo.\n");
-        exit(0);
-    }
-
-    // Ler cabeçalho
-    if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit(0);
-    }
-
-    if (cabecalho.status != '1') {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit(0);
-    }
-
-    posicoesEncontradas = malloc(capacidade * sizeof(long long));
-    if (posicoesEncontradas == NULL) {
-        printf("Falha no processamento do arquivo.\n");
-        fclose(arquivo);
-        exit(0);
-    }
-
-    // Percorrer todos os registros
-    while (lerRegistroPessoa(arquivo, &pessoa)) {
-        posicaoAtual = ftell(arquivo) - pessoa.tamanhoRegistro - 5; // Posição do início do registro
-        
-        if (pessoa.removido == '0') {
-            int match = 0;
-
-            // Verificar critério de busca
-            if (strcmp(nomeCampo, "idPessoa") == 0) {
-                int idProcurado = atoi(valorBusca);
-                if (pessoa.idPessoa == idProcurado) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "nomePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.nomePessoa == NULL || strlen(pessoa.nomePessoa) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa.nomePessoa && strcmp(pessoa.nomePessoa, valorBusca) == 0) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "idade") == 0 || strcmp(nomeCampo, "idadePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.idadePessoa == -1) {
-                        match = 1;
-                    }
-                } else {
-                    int idadeProcurada = atoi(valorBusca);
-                    if (pessoa.idadePessoa == idadeProcurada) {
-                        match = 1;
-                    }
-                }
-            } else if (strcmp(nomeCampo, "nomeUsuario") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa.nomeUsuario == NULL || strlen(pessoa.nomeUsuario) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa.nomeUsuario && strcmp(pessoa.nomeUsuario, valorBusca) == 0) {
-                    match = 1;
-                }
-            }
-
-            if (match) {
-                if (tamanho >= capacidade) {
-                    capacidade *= 2;
-                    posicoesEncontradas = realloc(posicoesEncontradas, capacidade * sizeof(long long));
-                    if (posicoesEncontradas == NULL) {
-                        printf("Falha no processamento do arquivo.\n");
-                        fclose(arquivo);
-                        exit(0);
-                    }
-                }
-                posicoesEncontradas[tamanho] = posicaoAtual;
-                tamanho++;
-            }
-        }
-
-        // Liberar memória
-        if (pessoa.nomePessoa) {
-            free(pessoa.nomePessoa);
-            pessoa.nomePessoa = NULL;
-        }
-        if (pessoa.nomeUsuario) {
-            free(pessoa.nomeUsuario);
-            pessoa.nomeUsuario = NULL;
-        }
-    }
-
-    fclose(arquivo);
-    *posicoes = posicoesEncontradas;
-    *quantidade = tamanho;
-    return tamanho;
-}
 
 // Função auxiliar para aplicar atualizações em um registro
 void aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtualizacao) {
@@ -1781,7 +1458,7 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
 
 // Função auxiliar para calcular o tamanho do registro segue
 int calcularTamanhoRegistroSegue(RegistroSegue *segue) {
-    return 4 + 4 + 4 + 4 + segue->tamanhoDataInicio + 4 + segue->tamanhoDataFim + 4;
+    return 4 + 4 + 4 + 10 + 10 + 4;
 }
 
 // Função auxiliar para escrever um registro segue no arquivo
@@ -1790,20 +1467,11 @@ void escreverRegistroSegue(FILE *arquivo, RegistroSegue *segue) {
     segue->tamanhoRegistro = calcularTamanhoRegistroSegue(segue);
 
     fwrite(&segue->removido, sizeof(char), 1, arquivo);
-    fwrite(&segue->tamanhoRegistro, sizeof(int), 1, arquivo);
     fwrite(&segue->idPessoaQueSegue, sizeof(int), 1, arquivo);
     fwrite(&segue->idPessoaQueESeguida, sizeof(int), 1, arquivo);
-    fwrite(&segue->tamanhoDataInicio, sizeof(int), 1, arquivo);
+    fwrite(segue->dataInicioQueSegue, sizeof(char), 10, arquivo);
+    fwrite(segue->dataFimQueSegue, sizeof(char), 10, arquivo);
 
-    if (segue->tamanhoDataInicio > 0) {
-        fwrite(segue->dataInicioQueSegue, sizeof(char), segue->tamanhoDataInicio, arquivo);
-    }
-
-    fwrite(&segue->tamanhoDataFim, sizeof(int), 1, arquivo);
-
-    if (segue->tamanhoDataFim > 0) {
-        fwrite(segue->dataFimQueSegue, sizeof(char), segue->tamanhoDataFim, arquivo);
-    }
 
     fwrite(&segue->grauAmizade, sizeof(int), 1, arquivo);
 }
@@ -1864,23 +1532,17 @@ int ler_csv_segue(FILE *csv, RegistroSegue *segue) {
     segue->idPessoaQueESeguida = atoi(campos[1]);
 
     if (numCampos > 2 && strlen(campos[2]) > 0) {
-        segue->tamanhoDataInicio = strlen(campos[2]);
-        segue->dataInicioQueSegue = malloc(segue->tamanhoDataInicio + 1);
         strcpy(segue->dataInicioQueSegue, campos[2]);
-    } else {
-        segue->tamanhoDataInicio = 0;
+    }/* else {
         segue->dataInicioQueSegue = NULL;
     }
-
+      espero que todas as datas sejam datas corretamente, pois nao sei o que é pra colocar se elas nao forem dadas  */
     if (numCampos > 3 && strlen(campos[3]) > 0) {
-        segue->tamanhoDataFim = strlen(campos[3]);
-        segue->dataFimQueSegue = malloc(segue->tamanhoDataFim + 1);
         strcpy(segue->dataFimQueSegue, campos[3]);
-    } else {
-        segue->tamanhoDataFim = 0;
+    }/* else {
         segue->dataFimQueSegue = NULL;
     }
-
+        espero que todas as datas sejam datas corretamente, pois nao sei o que é pra colocar se elas nao forem dadas  */
     if (numCampos > 4 && strlen(campos[4]) > 0) {
         segue->grauAmizade = atoi(campos[4]);
     } else {
@@ -1933,8 +1595,8 @@ void CREAT_TABLE_SEGUE(char *csvArquivo, char *binArquivo) {
         escreverRegistroSegue(binFile, &segue);
         quantidadeSegue++;
 
-        if (segue.dataInicioQueSegue) free(segue.dataInicioQueSegue);
-        if (segue.dataFimQueSegue) free(segue.dataFimQueSegue);
+      //  if (segue.dataInicioQueSegue) free(segue.dataInicioQueSegue);
+      //  if (segue.dataFimQueSegue) free(segue.dataFimQueSegue);
     }
 
     // Atualizar cabeçalho do arquivo segue
@@ -1961,56 +1623,24 @@ int lerRegistroSegue(FILE *arquivo, RegistroSegue *segue) {
         return 0; 
     }
 
-    if (fread(&segue->tamanhoRegistro, sizeof(int), 1, arquivo) != 1) {
-        return 0;
-    }
-
+    
     if (fread(&segue->idPessoaQueSegue, sizeof(int), 1, arquivo) != 1) return 0;
     if (fread(&segue->idPessoaQueESeguida, sizeof(int), 1, arquivo) != 1) return 0;
-    if (fread(&segue->tamanhoDataInicio, sizeof(int), 1, arquivo) != 1) return 0;
-
-    if (segue->tamanhoDataInicio > 0) {
-        segue->dataInicioQueSegue = malloc(segue->tamanhoDataInicio + 1);
-        if (segue->dataInicioQueSegue == NULL) { 
-            fprintf(stderr, "Erro: Falha ao alocar memória para dataInicioQueSegue.\n");
-            return 0;
-        } 
-        if (fread(segue->dataInicioQueSegue, sizeof(char), segue->tamanhoDataInicio, arquivo) != segue->tamanhoDataInicio) {
-            free(segue->dataInicioQueSegue);
+    if (fread(segue->dataInicioQueSegue, sizeof(char), 10, arquivo) != 10) {
             return 0;
         }
-        segue->dataInicioQueSegue[segue->tamanhoDataInicio] = '\0';
-    } else {
-        segue->dataInicioQueSegue = NULL;
-    }
+      //  segue->dataInicioQueSegue[segue->tamanhoDataInicio] = '\0';
 
     // Ler dataFimQueSegue
-    if (fread(&segue->tamanhoDataFim, sizeof(int), 1, arquivo) != 1) {
-        if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
-        return 0;
-    }
-
-    if (segue->tamanhoDataFim > 0) {
-        segue->dataFimQueSegue = malloc(segue->tamanhoDataFim + 1);
-        if (segue->dataFimQueSegue == NULL) { 
-            fprintf(stderr, "Erro: Falha ao alocar memória para dataFimQueSegue.\n");
-            if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
-            return 0;
-        } 
-
-        if (fread(segue->dataFimQueSegue, sizeof(char), segue->tamanhoDataFim, arquivo) != segue->tamanhoDataFim) {
-            if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
-            free(segue->dataFimQueSegue);
+    if (fread(segue->dataFimQueSegue, sizeof(char), 10, arquivo) != 10) {
             return 0;
         }
-        segue->dataFimQueSegue[segue->tamanhoDataFim] = '\0';
-    } else {
-        segue->dataFimQueSegue = NULL;
-    }
+       // segue->dataFimQueSegue[segue->tamanhoDataFim] = '\0';
+    
 
     if (fread(&segue->grauAmizade, sizeof(int), 1, arquivo) != 1) {
-        if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
-        if (segue->dataFimQueSegue) free(segue->dataFimQueSegue);
+       // if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
+       // if (segue->dataFimQueSegue) free(segue->dataFimQueSegue);
         return 0;
     }
 
@@ -2124,11 +1754,11 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
     arquivoSaida = fopen(arquivoOrdenado, "wb");
     if (arquivoSaida == NULL) {
         printf("Falha no processamento do arquivo.\n");
-        // Liberar memória
+        /*Liberar memória
         for (i = 0; i < quantidadeRegistros; i++) {
             if (registros[i].dataInicioQueSegue) free(registros[i].dataInicioQueSegue);
             if (registros[i].dataFimQueSegue) free(registros[i].dataFimQueSegue);
-        }
+        }*/
         free(registros);
         exit(0);
     }
@@ -2161,11 +1791,11 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
 
     fclose(arquivoSaida);
 
-    // Liberar memória
+    /* Liberar memória
     for (i = 0; i < quantidadeRegistros; i++) {
         if (registros[i].dataInicioQueSegue) free(registros[i].dataInicioQueSegue);
         if (registros[i].dataFimQueSegue) free(registros[i].dataFimQueSegue);
-    }
+    }*/
     free(registros);
 
     // Mostrar arquivo ordenado na tela
@@ -2211,24 +1841,24 @@ RegistroSegue** LerRegistrosSegue(char *nomeArquivo, int *tamanho) {
         // Alocar memória para o registro
         registros[quantidadeRegistros] = malloc(sizeof(RegistroSegue));
         if (registros[quantidadeRegistros] == NULL) {
-            // Liberar memória já alocada
+            /* Liberar memória já alocada
             for (int i = 0; i < quantidadeRegistros; i++) {
                 if (registros[i]->dataInicioQueSegue) free(registros[i]->dataInicioQueSegue);
                 if (registros[i]->dataFimQueSegue) free(registros[i]->dataFimQueSegue);
                 free(registros[i]);
-            }
+            }*/
             free(registros);
             fclose(arquivo);
             return NULL;
         }
         
         if (!lerRegistroSegue(arquivo, registros[quantidadeRegistros])) {
-            // Liberar memória já alocada
+            /* Liberar memória já alocada
             for (int i = 0; i <= quantidadeRegistros; i++) {
                 if (registros[i]->dataInicioQueSegue) free(registros[i]->dataInicioQueSegue);
                 if (registros[i]->dataFimQueSegue) free(registros[i]->dataFimQueSegue);
                 free(registros[i]);
-            }
+            }*/
             free(registros);
             fclose(arquivo);
             return NULL;
@@ -2241,12 +1871,12 @@ RegistroSegue** LerRegistrosSegue(char *nomeArquivo, int *tamanho) {
             capacidade *= 2;
             registros = realloc(registros, capacidade * sizeof(RegistroSegue*));
             if (registros == NULL) {
-                // Liberar memória já alocada
+                /* Liberar memória já alocada
                 for (int i = 0; i < quantidadeRegistros; i++) {
                     if (registros[i]->dataInicioQueSegue) free(registros[i]->dataInicioQueSegue);
                     if (registros[i]->dataFimQueSegue) free(registros[i]->dataFimQueSegue);
                     free(registros[i]);
-                }
+                }*/
                 free(registros);
                 fclose(arquivo);
                 return NULL;
@@ -2262,214 +1892,17 @@ RegistroSegue** LerRegistrosSegue(char *nomeArquivo, int *tamanho) {
 // Função para liberar memória dos registros segue
 void LiberarRegistrosSegue(RegistroSegue **registros, int tamanho) {
     if (registros == NULL) return;
-    
+    /*
     for (int i = 0; i < tamanho; i++) {
         if (registros[i] != NULL) {
             if (registros[i]->dataInicioQueSegue) free(registros[i]->dataInicioQueSegue);
             if (registros[i]->dataFimQueSegue) free(registros[i]->dataFimQueSegue);
             free(registros[i]);
         }
-    }
+    }*/
     free(registros);
 }
 
-// Função de busca binária modificada conforme orientações
-int BuscaBinariaSegue(RegistroSegue **registros, int tamanho, int idPessoaQueSegue) {
-    int inicio = 0;
-    int fim = tamanho - 1;
-    int meio;
-    
-    while (inicio <= fim) {
-        meio = (inicio + fim) / 2;
-        
-        if (registros[meio]->idPessoaQueSegue == idPessoaQueSegue) {
-            return meio; // Encontrou um registro com o ID
-        } else if (registros[meio]->idPessoaQueSegue < idPessoaQueSegue) {
-            inicio = meio + 1;
-        } else {
-            fim = meio - 1;
-        }
-    }
-    
-    return -1; // Não encontrou
-}
-
-// Função auxiliar para busca binária no arquivo segueOrdenado
-int buscaBinariaSegue(FILE *arquivo, int idPessoaQueSegue, RegistroSegue *resultados, int *quantidadeResultados) {
-    CabecalhoSegue cabecalho;
-    long long inicio, fim, meio;
-    RegistroSegue registro;
-    int encontrados = 0;
-    int capacidade = 100;
-    
-    // Ler cabeçalho
-    if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
-        return 0;
-    }
-    
-    if (cabecalho.status != '1') {
-        return 0;
-    }
-    
-    // Busca binária
-    inicio = 17; // Após o cabeçalho
-    fim = cabecalho.proxByteOffset - 1;
-    
-    while (inicio <= fim) {
-        meio = (inicio + fim) / 2;
-        fseek(arquivo, meio, SEEK_SET);
-        
-        // Ler registro na posição meio
-        if (!lerRegistroSegue(arquivo, &registro)) {
-            break;
-        }
-        
-        if (registro.idPessoaQueSegue == idPessoaQueSegue) {
-            // Encontrou um registro, agora buscar todos os registros com o mesmo idPessoaQueSegue
-            // Primeiro, encontrar o primeiro registro com esse ID
-            long long posicaoAtual = ftell(arquivo) - registro.tamanhoRegistro - 5;
-            
-            // Buscar para trás para encontrar o primeiro registro
-            while (posicaoAtual > 17) {
-                fseek(arquivo, posicaoAtual - 1, SEEK_SET);
-                RegistroSegue registroAnterior;
-                if (!lerRegistroSegue(arquivo, &registroAnterior)) {
-                    break;
-                }
-                if (registroAnterior.idPessoaQueSegue != idPessoaQueSegue) {
-                    if (registroAnterior.dataInicioQueSegue) free(registroAnterior.dataInicioQueSegue);
-                    if (registroAnterior.dataFimQueSegue) free(registroAnterior.dataFimQueSegue);
-                    break;
-                }
-                posicaoAtual = ftell(arquivo) - registroAnterior.tamanhoRegistro - 5;
-                if (registroAnterior.dataInicioQueSegue) free(registroAnterior.dataInicioQueSegue);
-                if (registroAnterior.dataFimQueSegue) free(registroAnterior.dataFimQueSegue);
-            }
-            
-            // Agora ler todos os registros consecutivos com o mesmo ID
-            fseek(arquivo, posicaoAtual, SEEK_SET);
-            while (lerRegistroSegue(arquivo, &registro)) {
-                if (registro.idPessoaQueSegue != idPessoaQueSegue) {
-                    if (registro.dataInicioQueSegue) free(registro.dataInicioQueSegue);
-                    if (registro.dataFimQueSegue) free(registro.dataFimQueSegue);
-                    break;
-                }
-                
-                if (encontrados >= capacidade) {
-                    capacidade *= 2;
-                    resultados = realloc(resultados, capacidade * sizeof(RegistroSegue));
-                    if (resultados == NULL) {
-                        if (registro.dataInicioQueSegue) free(registro.dataInicioQueSegue);
-                        if (registro.dataFimQueSegue) free(registro.dataFimQueSegue);
-                        return 0;
-                    }
-                }
-                
-                resultados[encontrados] = registro;
-                encontrados++;
-            }
-            break;
-        } else if (registro.idPessoaQueSegue < idPessoaQueSegue) {
-            inicio = meio + 1;
-        } else {
-            fim = meio - 1;
-        }
-        
-        if (registro.dataInicioQueSegue) free(registro.dataInicioQueSegue);
-        if (registro.dataFimQueSegue) free(registro.dataFimQueSegue);
-    }
-    
-    *quantidadeResultados = encontrados;
-    return encontrados;
-}
-
-// Função auxiliar para buscar pessoa usando funcionalidade 4
-int buscarPessoaParaJoin(char *binArquivo, char *nomeCampo, char *valorBusca, RegistroPessoa *pessoa) {
-    FILE *arquivo;
-    CabecalhoPessoa cabecalho;
-    int encontrado = 0;
-    
-    arquivo = fopen(binArquivo, "rb");
-    if (arquivo == NULL) {
-        return 0;
-    }
-    
-    if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadePessoas, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
-        fclose(arquivo);
-        return 0;
-    }
-    
-    if (cabecalho.status != '1') {
-        fclose(arquivo);
-        return 0;
-    }
-    
-    while (lerRegistroPessoa(arquivo, pessoa)) {
-        if (pessoa->removido == '0') {
-            int match = 0;
-            
-            if (strcmp(nomeCampo, "idPessoa") == 0) {
-                int idProcurado = atoi(valorBusca);
-                if (pessoa->idPessoa == idProcurado) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "nomePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa->nomePessoa == NULL || strlen(pessoa->nomePessoa) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa->nomePessoa && strcmp(pessoa->nomePessoa, valorBusca) == 0) {
-                    match = 1;
-                }
-            } else if (strcmp(nomeCampo, "idade") == 0 || strcmp(nomeCampo, "idadePessoa") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa->idadePessoa == -1) {
-                        match = 1;
-                    }
-                } else {
-                    int idadeProcurada = atoi(valorBusca);
-                    if (pessoa->idadePessoa == idadeProcurada) {
-                        match = 1;
-                    }
-                }
-            } else if (strcmp(nomeCampo, "nomeUsuario") == 0) {
-                if (strcmp(valorBusca, "NULO") == 0) {
-                    if (pessoa->nomeUsuario == NULL || strlen(pessoa->nomeUsuario) == 0) {
-                        match = 1;
-                    }
-                } else if (pessoa->nomeUsuario && strcmp(pessoa->nomeUsuario, valorBusca) == 0) {
-                    match = 1;
-                }
-            }
-            
-            if (match) {
-                encontrado = 1;
-                break;
-            }
-        }
-        
-        // Liberar memória se não for o registro encontrado
-        if (!encontrado) {
-            if (pessoa->nomePessoa) {
-                free(pessoa->nomePessoa);
-                pessoa->nomePessoa = NULL;
-            }
-            if (pessoa->nomeUsuario) {
-                free(pessoa->nomeUsuario);
-                pessoa->nomeUsuario = NULL;
-            }
-        }
-    }
-    
-    fclose(arquivo);
-    return encontrado;
-}
 
 // Função 10 - JOIN (conforme orientações)
 void JOIN(char *arquivoPessoa, char *arquivoIndice, char *arquivoSegue, int n) {
