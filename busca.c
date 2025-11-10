@@ -562,7 +562,7 @@ int BuscaBinariaSegue(RegistroSegue **registros, int tamanho, int idPessoaQueSeg
 // Função auxiliar para busca binária no arquivo segueOrdenado
 int buscaBinariaSegue(FILE *arquivo, int idPessoaQueSegue, RegistroSegue *resultados, int *quantidadeResultados) {
     CabecalhoSegue cabecalho;
-    long long inicio, fim, meio;
+    int inicio, fim, meio;
     RegistroSegue registro;
     int encontrados = 0;
     int capacidade = 100;
@@ -570,8 +570,7 @@ int buscaBinariaSegue(FILE *arquivo, int idPessoaQueSegue, RegistroSegue *result
     // Ler cabeçalho
     if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
         fread(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
+        fread(&cabecalho.proxRRN, sizeof(int), 1, arquivo) != 1) {
         return 0;
     }
     
@@ -580,11 +579,13 @@ int buscaBinariaSegue(FILE *arquivo, int idPessoaQueSegue, RegistroSegue *result
     }
     
     // Busca binária
-    inicio = 17; // Após o cabeçalho
-    fim = cabecalho.proxByteOffset - 1;
+    inicio = 0; //primeiro RRN válido
+    fim = cabecalho.proxRRN ; //último RRN válido
+    long long deslocamento; // Deslocamento para fseek
     
     while (inicio <= fim) {
         meio = (inicio + fim) / 2;
+        deslocamento = 9 + meio * 30; // 9 bytes de cabeçalho + tamanho fixo do registro segue
         fseek(arquivo, meio, SEEK_SET);
         
         // Ler registro na posição meio

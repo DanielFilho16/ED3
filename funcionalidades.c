@@ -1,7 +1,9 @@
 #include "estruturas.h"
 #include "busca.h"
 
-#define debug 1
+#define debug 0
+#define debugi 0
+#define debugj 1
 
 // ordena idPessoa para o indice
 int compararIdPessoa(const void *a, const void *b) {
@@ -203,7 +205,7 @@ int calcularTamanhoRegistro(RegistroPessoa *pessoa) {
 // escreve um registro pessoa no arquivo
 void escreverRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
     pessoa->removido = '0'; //
-    pessoa->tamanhoRegistro = calcularTamanhoRegistro(pessoa);
+    if(pessoa->tamanhoRegistro == 0) pessoa->tamanhoRegistro = calcularTamanhoRegistro(pessoa);
 
     fwrite(&pessoa->removido,   sizeof(char), 1, arquivo);
     fwrite(&pessoa->tamanhoRegistro, sizeof(int), 1, arquivo);
@@ -361,26 +363,39 @@ void CREAT_TABLE(char *csvArquivo, char *binArquivo, char *indiceArquivo) {
 }
 
 int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
+    int byteatual = ftell(arquivo);
+    if(debug) fprintf(stderr,"Lendo registro no byte offset: %d\n",byteatual);
     if (fread(&pessoa->removido, sizeof(char), 1, arquivo) != 1) {
         return 0; 
     }
-
+    if(debug) fprintf(stderr,"Lendo registro com status: %c\n",pessoa->removido);
     if (fread(&pessoa->tamanhoRegistro, sizeof(int), 1, arquivo) != 1) {
         return 0;
     }
-
+    if(debug) fprintf(stderr,"Tamanho do registro: %d\n",pessoa->tamanhoRegistro);
     if (fread(&pessoa->idPessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    if(debug) fprintf(stderr,"ID da pessoa: %d\n",pessoa->idPessoa);
     if (fread(&pessoa->idadePessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    if(debug) fprintf(stderr,"Idade da pessoa: %d\n",pessoa->idadePessoa);
     if (fread(&pessoa->tamanhoNomePessoa, sizeof(int), 1, arquivo) != 1) return 0;
+    if(debug) fprintf(stderr,"Tamanho do nome da pessoa: %d\n",pessoa->tamanhoNomePessoa);
 
     if (pessoa->tamanhoNomePessoa > 0) {
+       
+            // Validar tamanhoNomePessoa antes de alocar
+        if (pessoa->tamanhoNomePessoa <= 0) {
+             fprintf(stderr, "Erro: tamanhoNomePessoa inválido (%d)\n", pessoa->tamanhoNomePessoa);
+                 return 0;
+            }
+
         pessoa->nomePessoa = malloc(pessoa->tamanhoNomePessoa + 1);
         if (pessoa->nomePessoa == NULL) { 
-        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa.\n");
-        printf("ERRO: Falha ao alocar memória para ID %d",pessoa->idPessoa);
+        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa (l379).\n");
+        fprintf(stderr,"ERRO: Falha ao alocar %d bits de memória para ID %d",pessoa->tamanhoNomePessoa,pessoa->idPessoa);
         return 0;} 
         if (fread(pessoa->nomePessoa, sizeof(char), pessoa->tamanhoNomePessoa, arquivo) != pessoa->tamanhoNomePessoa) {
             free(pessoa->nomePessoa);
+            pessoa->nomePessoa = NULL;
             return 0;
         }
         pessoa->nomePessoa[pessoa->tamanhoNomePessoa] = '\0';
@@ -397,7 +412,7 @@ int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
     if (pessoa->tamanhoNomeUsuario > 0) {
         pessoa->nomeUsuario = malloc(pessoa->tamanhoNomeUsuario + 1);
         if (pessoa->nomeUsuario == NULL) { 
-        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa.\n");
+        fprintf(stderr, "Erro: Falha ao alocar memória para nomePessoa. (l400)\n ");
         printf("ERRO: Falha ao alocar memória para ID %d",pessoa->idPessoa);
         return 0;} 
 
@@ -410,7 +425,7 @@ int lerRegistroPessoa(FILE *arquivo, RegistroPessoa *pessoa) {
     } else {
         pessoa->nomeUsuario = NULL;
     }
-
+    fseek(arquivo, byteatual + 5 + pessoa->tamanhoRegistro, SEEK_SET);
     return 1; 
 }
 
@@ -806,6 +821,7 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
                     char removido = '1';
                     fwrite(&removido, sizeof(char), 1, arquivo);
                     cabecalho.quantidadeRemovidos++;
+                    cabecalho.quantidadePessoas--;
                     
                     // Remover do índice em memória
                     // Encontrar o ID da pessoa removida
@@ -869,19 +885,23 @@ int verificarIdExistente(char *binArquivo, int idPessoa) {
         fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
         fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
         fclose(arquivo);
+        fprintf(stderr, "Erro ao ler o cabeçalho do arquivo %s\n", binArquivo);
         return 0;
     }
-
+    if(debug) fprintf(stderr,"Cabeçalho lido: status=%c, quantidadePessoas=%d, quantidadeRemovidos=%d, proxByteOffset=%lld\n",
+        cabecalho.status, cabecalho.quantidadePessoas, cabecalho.quantidadeRemovidos, cabecalho.proxByteOffset);
     if (cabecalho.status != '1') {
         fclose(arquivo);
+        fprintf(stderr, "Arquivo %s inconsistente\n", binArquivo);
         return 0;
     }
-
+    if(debug) fprintf(stderr,"Verificando existencia do ID %d no arquivo %s\n", idPessoa, binArquivo);
     // Percorrer todos os registros
     while (lerRegistroPessoa(arquivo, &pessoa)) {
         if (pessoa.removido == '0' && pessoa.idPessoa == idPessoa) {
             // Liberar memória
             if (pessoa.nomePessoa) {
+                if(debug) fprintf(stderr,"ID %d já existe no arquivo %s\n", idPessoa, binArquivo);
                 free(pessoa.nomePessoa);
                 pessoa.nomePessoa = NULL;
             }
@@ -971,6 +991,9 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
     RegistroIndice *registros;
     int quantidadeRegistros;
     int i, j;
+    int idJaExiste = 0;
+    int posicaoExistente = -1;
+    int posicaoInsercao;
 
     arquivo = fopen(indiceArquivo, "r+b");
     if (arquivo == NULL) {
@@ -986,6 +1009,8 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
         exit(0);
     }
 
+    if(debugi) fprintf(stderr,"Cabeçalho do índice lido: status= %c\n", cabecalho.status);
+
     if (cabecalho.status != '1') {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
@@ -998,17 +1023,27 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
     quantidadeRegistros = (tamanhoArquivo - 12) / 12; // 12 bytes por registro (4 + 8)
 
     // Ler todos os registros do índice
-    registros = malloc(quantidadeRegistros * sizeof(RegistroIndice));
+    registros = malloc((quantidadeRegistros + 1) * sizeof(RegistroIndice));
     if (registros == NULL) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivo);
         exit(0);
     }
 
+    if(debugi) fprintf(stderr,"Lendo %d registros do índice para atualização...\n", quantidadeRegistros);
+
     fseek(arquivo, 12, SEEK_SET);
     for (i = 0; i < quantidadeRegistros; i++) {
         fread(&registros[i].idPessoa, sizeof(int), 1, arquivo);
         fread(&registros[i].byteOffset, sizeof(long long), 1, arquivo);
+
+        //verifica se o ID já existe
+        if (registros[i].idPessoa == idPessoa) {
+            idJaExiste = 1;
+            posicaoExistente = i;
+            if(debugi) fprintf(stderr,"ID %d já existe no índice na posição %d\n", 
+                              idPessoa, posicaoExistente);
+        }
     }
 
     // Adicionar novo registro
@@ -1016,23 +1051,28 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
     novoRegistro.byteOffset = byteOffset;
 
     // Encontrar posição correta para inserir (ordem crescente por ID)
-    int posicaoInsercao = quantidadeRegistros;
-    for (i = 0; i < quantidadeRegistros; i++) {
+    if(!idJaExiste){
+        posicaoInsercao = quantidadeRegistros;
+     for (i = 0; i < quantidadeRegistros; i++) {
         if (registros[i].idPessoa > idPessoa) {
             posicaoInsercao = i;
             break;
         }
+     }
+       if(debugi) fprintf(stderr,"Posição de inserção para ID %d: %d\n", idPessoa, posicaoInsercao);
+        // Deslocar registros para abrir espaço
+        for (i = quantidadeRegistros; i > posicaoInsercao; i--) {
+            registros[i] = registros[i-1];
+        }
+            if(debugi) fprintf(stderr,"Deslocados registros para inserção do novo registro.\n");
+        // Inserir novo registro
+        registros[posicaoInsercao] = novoRegistro;
+        quantidadeRegistros++;
+    } else {
+        // Atualizar byteOffset do registro existente
+        registros[posicaoExistente].byteOffset = byteOffset;
+        if(debugi) fprintf(stderr,"Atualizado byteOffset do ID %d na posição %d\n", idPessoa, posicaoExistente);
     }
-
-    // Deslocar registros para abrir espaço
-    for (i = quantidadeRegistros; i > posicaoInsercao; i--) {
-        registros[i] = registros[i-1];
-    }
-
-    // Inserir novo registro
-    registros[posicaoInsercao] = novoRegistro;
-    quantidadeRegistros++;
-
     // Marcar arquivo como inconsistente
     cabecalho.status = '0';
     fseek(arquivo, 0, SEEK_SET);
@@ -1050,6 +1090,8 @@ void atualizarIndice(char *indiceArquivo, int idPessoa, long long byteOffset) {
     fseek(arquivo, 0, SEEK_SET);
     fwrite(&cabecalho.status, sizeof(char), 1, arquivo);
 
+    if(debugi)fprintf(stderr,"Indice atualizado com ID %d no byte offset %lld\n", idPessoa, byteOffset);
+
     free(registros);
     fclose(arquivo);
 }
@@ -1060,6 +1102,10 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
     scanf("%d", &n);
     RegistroPessoa pessoa;
 
+
+    
+    if(debug) printf("rodou até linha 1083 INSERT_INTO\n");
+
     for (int i = 0; i < n; i++) {
         char linha[500];
         char campos[4][200];
@@ -1067,8 +1113,7 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
         
         long long byteOffset;
 
-
-
+        
 
         // Ler linha de entrada
         if (fgets(linha, sizeof(linha), stdin) == NULL) {
@@ -1123,7 +1168,7 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             if(debug) printf("Erro: ID %d já existe no arquivo para INSERT_INTO\n", pessoa.idPessoa);
             exit(0);
         }
-
+        if(debug) fprintf(stderr,"Id da pessoa: %d ainda não existe no banco de dados\n",pessoa.idPessoa);
         // Processar nomePessoa
         if (strcmp(campos[1], "NULO") == 0) {
             pessoa.tamanhoNomePessoa = 0;
@@ -1138,7 +1183,7 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             pessoa.nomePessoa = malloc(pessoa.tamanhoNomePessoa + 1);
             if (pessoa.nomePessoa == NULL) {
                 printf("Falha no processamento do arquivo.\n");
-                if(debug) printf("Erro: Falha ao alocar memória para nomePessoa no INSERT_INTO\n");
+                if(debug) fprintf(stderr,"Erro: Falha ao alocar memória para nomePessoa no INSERT_INTO\n");
                 exit(0);
             }
             strcpy(pessoa.nomePessoa, campos[1]);
@@ -1171,18 +1216,35 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             }
             strcpy(pessoa.nomeUsuario, campos[3]);
         }
+        if(debug) fprintf(stderr,"Dados da pessoa a inserir: ID=%d, nomePessoa=%s, idadePessoa=%d, nomeUsuario=%s\n",
+            pessoa.idPessoa,
+            pessoa.nomePessoa ? pessoa.nomePessoa : "NULO",
+            pessoa.idadePessoa,
+            pessoa.nomeUsuario ? pessoa.nomeUsuario : "NULO");
 
-        // Inserir registro no arquivo
+        
+        pessoa.tamanhoRegistro = 0; // Será calculado na função de escrita
+        
+            // Inserir registro no arquivo
         byteOffset = inserirRegistroPessoa(binArquivo, &pessoa);
+
+        if(debug) fprintf(stderr,"Registro inserido no arquivo %s no byteOffset %lld\n", binArquivo, byteOffset);
 
         // Atualizar índice
         atualizarIndice(indiceArquivo, pessoa.idPessoa, byteOffset);
 
+        if(debug) fprintf(stderr,"Indice atualizado no arquivo %s com ID %d e byteOffset %lld\n",indiceArquivo, pessoa.idPessoa, byteOffset);
+
+        
+        if(debug) fprintf(stderr,"rodou até fim do loop %d INSERT_INTO\n" ,i+1);
         // Liberar memória
         if (pessoa.nomePessoa) {
+            if(debug) fprintf(stderr,"Liberando nomePessoa: %s\n", pessoa.nomePessoa);
             free(pessoa.nomePessoa);
         }
         if (pessoa.nomeUsuario) {
+            if(debug) fprintf(stderr,"Liberando nomeUsuario: %s\n", pessoa.nomeUsuario);
+        
             free(pessoa.nomeUsuario);
         }
     }
@@ -1344,12 +1406,15 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
         strcpy(nomeCampoAtualiza, criterioAtualizacao);
         strcpy(valorAtualizacao, separadorAtualiza + 1);
 
+        if(debugj) fprintf(stderr,"UPDATE - Busca: %s é %s, Atualiza: %s é %s\n",nomeCampoBusca, valorBusca, nomeCampoAtualiza, valorAtualizacao);
+
         // USAR MÓDULO DE BUSCA MODULARIZADO
         ResultadoBusca *resultado = buscarPessoas(binArquivo, indiceArquivo, nomeCampoBusca, valorBusca);
         int encontrados = 0;
         
         if (resultado != NULL && resultado->quantidade > 0) {
             encontrados = resultado->quantidade;
+            if(debugj) fprintf(stderr,"Registros encontrados para atualização: %d\n", encontrados);
             FILE *arquivo = fopen(binArquivo, "r+b");
             if (arquivo == NULL) {
                 printf("Falha no processamento do arquivo.\n");
@@ -1363,6 +1428,8 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
             fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo);
             fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo);
 
+            if(debugj) fprintf(stderr,"Cabeçalho lido para atualização: status=%c, quantidadePessoas=%d, quantidadeRemovidos=%d, proxByteOffset=%lld\n",cabecalho.status, cabecalho.quantidadePessoas, cabecalho.quantidadeRemovidos, cabecalho.proxByteOffset);
+
             cabecalho.status = '0';
             fseek(arquivo, 0, SEEK_SET);
             fwrite(&cabecalho.status, sizeof(char), 1, arquivo);
@@ -1373,8 +1440,18 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
                 
                 // Ler registro original
                 if (!lerRegistroEmPosicao(arquivo, resultado->posicoes[j], &pessoaOriginal)) {
+                    if(debugj) fprintf(stderr,"Erro ao ler registro na posição %lld para atualização do encontrado %d\n", resultado->posicoes[j], j + 1);
                     continue;
                 }
+
+
+                if(debugj) fprintf(stderr,"Registro original lido para atualização: ID=%d, nomePessoa=%s, idadePessoa=%d, nomeUsuario=%s\n",
+                    pessoaOriginal.idPessoa,
+                    pessoaOriginal.nomePessoa ? pessoaOriginal.nomePessoa : "NULO",
+                    pessoaOriginal.idadePessoa,
+                    pessoaOriginal.nomeUsuario ? pessoaOriginal.nomeUsuario : "NULO");
+
+
 
                 // Criar cópia para atualização
                 pessoaAtualizada = pessoaOriginal;
@@ -1406,7 +1483,7 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
 
                 if (tamanhoAtualizado <= tamanhoOriginal) {
                     // Atualização in-place
-                    pessoaAtualizada.tamanhoRegistro = tamanhoAtualizado;
+                    pessoaAtualizada.tamanhoRegistro = tamanhoOriginal;
                     escreverRegistroEmPosicao(arquivo, resultado->posicoes[j], &pessoaAtualizada);
                     
                     // Preencher espaço restante com lixo
@@ -1423,7 +1500,7 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
                     // Inserir novo registro no final
                     fseek(arquivo, 0, SEEK_END);
                     long long novaPosicao = ftell(arquivo);
-                    pessoaAtualizada.tamanhoRegistro = tamanhoAtualizado;
+                    pessoaAtualizada.tamanhoRegistro = 0; // Será calculado na função de escrita
                     escreverRegistroPessoa(arquivo, &pessoaAtualizada);
 
                     // Atualizar índice
@@ -1456,15 +1533,12 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
     binarioNaTela(indiceArquivo);
 }
 
-// Função auxiliar para calcular o tamanho do registro segue
-int calcularTamanhoRegistroSegue(RegistroSegue *segue) {
-    return 4 + 4 + 4 + 10 + 10 + 4;
-}
+
 
 // Função auxiliar para escrever um registro segue no arquivo
 void escreverRegistroSegue(FILE *arquivo, RegistroSegue *segue) {
     segue->removido = '0';
-    segue->tamanhoRegistro = calcularTamanhoRegistroSegue(segue);
+
 
     fwrite(&segue->removido, sizeof(char), 1, arquivo);
     fwrite(&segue->idPessoaQueSegue, sizeof(int), 1, arquivo);
@@ -1473,7 +1547,7 @@ void escreverRegistroSegue(FILE *arquivo, RegistroSegue *segue) {
     fwrite(segue->dataFimQueSegue, sizeof(char), 10, arquivo);
 
 
-    fwrite(&segue->grauAmizade, sizeof(int), 1, arquivo);
+    fwrite(&segue->grauAmizade, sizeof(char), 1, arquivo);
 }
 
 // Função para ler CSV do arquivo segue
@@ -1531,22 +1605,26 @@ int ler_csv_segue(FILE *csv, RegistroSegue *segue) {
     segue->idPessoaQueSegue = atoi(campos[0]);
     segue->idPessoaQueESeguida = atoi(campos[1]);
 
-    if (numCampos > 2 && strlen(campos[2]) > 0) {
+    if (numCampos > 2 && strlen(campos[2]) == 10) {
         strcpy(segue->dataInicioQueSegue, campos[2]);
-    }/* else {
-        segue->dataInicioQueSegue = NULL;
-    }
-      espero que todas as datas sejam datas corretamente, pois nao sei o que é pra colocar se elas nao forem dadas  */
-    if (numCampos > 3 && strlen(campos[3]) > 0) {
-        strcpy(segue->dataFimQueSegue, campos[3]);
-    }/* else {
-        segue->dataFimQueSegue = NULL;
-    }
-        espero que todas as datas sejam datas corretamente, pois nao sei o que é pra colocar se elas nao forem dadas  */
-    if (numCampos > 4 && strlen(campos[4]) > 0) {
-        segue->grauAmizade = atoi(campos[4]);
     } else {
-        segue->grauAmizade = -1; // Valor nulo
+        for(int kk = 0; kk < 10; kk++) {
+        segue->dataInicioQueSegue[kk] = '$';
+        }
+    }
+
+    if (numCampos > 3 && strlen(campos[3]) == 10) {
+        strcpy(segue->dataFimQueSegue, campos[3]);
+    } else {
+        for(int kk = 0; kk < 10; kk++) {
+        segue->dataFimQueSegue[kk] = '$';
+        }
+    }
+
+    if (numCampos > 4 && strlen(campos[4]) > 0) {
+        segue->grauAmizade = campos[4][0];
+    } else {
+        segue->grauAmizade = '$'; // Valor nulo
     }
 
     for (int i = 0; i < numCampos; i++) {
@@ -1578,13 +1656,11 @@ void CREAT_TABLE_SEGUE(char *csvArquivo, char *binArquivo) {
 
     cabecalhoSegue.status = '0';
     cabecalhoSegue.quantidadeSegue = 0;
-    cabecalhoSegue.quantidadeRemovidos = 0;
-    cabecalhoSegue.proxByteOffset = 17; // Tamanho do cabeçalho
+    cabecalhoSegue.proxRRN = 9; // Cabeçalho ocupa 9 bytes
 
     fwrite(&cabecalhoSegue.status, sizeof(char), 1, binFile);
     fwrite(&cabecalhoSegue.quantidadeSegue, sizeof(int), 1, binFile);
-    fwrite(&cabecalhoSegue.quantidadeRemovidos, sizeof(int), 1, binFile);
-    fwrite(&cabecalhoSegue.proxByteOffset, sizeof(long long), 1, binFile);
+    fwrite(&cabecalhoSegue.proxRRN, sizeof(int), 1, binFile);
 
     // pula a primeira linha do CSV (cabeçalho)
     char linha[1024];
@@ -1602,13 +1678,12 @@ void CREAT_TABLE_SEGUE(char *csvArquivo, char *binArquivo) {
     // Atualizar cabeçalho do arquivo segue
     cabecalhoSegue.status = '1';
     cabecalhoSegue.quantidadeSegue = quantidadeSegue;
-    cabecalhoSegue.proxByteOffset = ftell(binFile);
+    cabecalhoSegue.proxRRN = (ftell(binFile) - 9)/30; // Cada registro ocupa 34 bytes
 
     fseek(binFile, 0, SEEK_SET);
     fwrite(&cabecalhoSegue.status, sizeof(char), 1, binFile);
     fwrite(&cabecalhoSegue.quantidadeSegue, sizeof(int), 1, binFile);
-    fwrite(&cabecalhoSegue.quantidadeRemovidos, sizeof(int), 1, binFile);
-    fwrite(&cabecalhoSegue.proxByteOffset, sizeof(long long), 1, binFile);
+    fwrite(&cabecalhoSegue.proxRRN, sizeof(int), 1, binFile);
 
     fclose(csv);
     fclose(binFile);
@@ -1638,7 +1713,7 @@ int lerRegistroSegue(FILE *arquivo, RegistroSegue *segue) {
        // segue->dataFimQueSegue[segue->tamanhoDataFim] = '\0';
     
 
-    if (fread(&segue->grauAmizade, sizeof(int), 1, arquivo) != 1) {
+    if (fread(&segue->grauAmizade, sizeof(char), 1, arquivo) != 1) {
        // if (segue->dataInicioQueSegue) free(segue->dataInicioQueSegue);
        // if (segue->dataFimQueSegue) free(segue->dataFimQueSegue);
         return 0;
@@ -1662,29 +1737,52 @@ int compararRegistrosSegue(const void *a, const void *b) {
 
     // Critério 3: dataInicioQueSegue (crescente) - desempate
     // Tratar valores nulos: nulos vêm depois dos não-nulos
-    if (regA->dataInicioQueSegue == NULL && regB->dataInicioQueSegue == NULL) {
+    if (regA->dataInicioQueSegue[0] == '$' && regB->dataInicioQueSegue[0] == '$') {
         // Ambos nulos, continuar para próximo critério
-    } else if (regA->dataInicioQueSegue == NULL) {
+    } else if (regA->dataInicioQueSegue[0] == '$') {
         return 1; // A é nulo, B não é nulo, A vem depois
-    } else if (regB->dataInicioQueSegue == NULL) {
+    } else if (regB->dataInicioQueSegue[0] == '$') {
         return -1; // B é nulo, A não é nulo, B vem depois
     } else {
         // Ambos não nulos, comparar strings
-        int comparacao = strcmp(regA->dataInicioQueSegue, regB->dataInicioQueSegue);
-        if (comparacao != 0) return comparacao;
+        int comparacao = 0;
+        int kk = 6;
+        while(1) {
+            if(regA->dataInicioQueSegue[kk] < regB->dataInicioQueSegue[kk]) comparacao = -1;
+            if(regA->dataInicioQueSegue[kk] > regB->dataInicioQueSegue[kk]) comparacao = 1;
+            if (comparacao != 0) return comparacao; //se for diferente já retorna
+            if(kk == 9) kk = 3; // Pula do ano para o mês
+            if(kk == 4) kk = 0; // Pula do mês para o dia
+            if(kk == 2) break; // Sai após comparar o dia
+            else kk ++;
+        }
+        
+        
     }
 
     // Critério 4: dataFimQueSegue (crescente) - desempate final
     // Tratar valores nulos: nulos vêm depois dos não-nulos
-    if (regA->dataFimQueSegue == NULL && regB->dataFimQueSegue == NULL) {
+    if (regA->dataFimQueSegue[0] == '$' && regB->dataFimQueSegue[0] == '$') {
         return 0; // Ambos nulos, são iguais
-    } else if (regA->dataFimQueSegue == NULL) {
+    } else if (regA->dataFimQueSegue[0] == '$') {
         return 1; // A é nulo, B não é nulo, A vem depois
-    } else if (regB->dataFimQueSegue == NULL) {
+    } else if (regB->dataFimQueSegue[0] == '$') {
         return -1; // B é nulo, A não é nulo, B vem depois
     } else {
         // Ambos não nulos, comparar strings
-        return strcmp(regA->dataFimQueSegue, regB->dataFimQueSegue);
+        int comparacao = 0;
+        int kk = 6;
+        while(1) {
+            if(regA->dataFimQueSegue[kk] < regB->dataFimQueSegue[kk]) comparacao = -1;
+            if(regA->dataFimQueSegue[kk] > regB->dataFimQueSegue[kk]) comparacao = 1;
+            if (comparacao != 0) return comparacao; //se for diferente já retorna
+            if(kk == 9) kk = 4; // Pula do ano para o mês
+            if(kk == 5) kk = 0; // Pula do mês para o dia
+            if(kk == 2) break; // Sai após comparar o dia
+            else kk ++;
+        }
+        
+        
     }
 }
 
@@ -1707,8 +1805,7 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
     // Ler cabeçalho
     if (fread(&cabecalho.status, sizeof(char), 1, arquivoEntrada) != 1 ||
         fread(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivoEntrada) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivoEntrada) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivoEntrada) != 1) {
+        fread(&cabecalho.proxRRN, sizeof(int), 1, arquivoEntrada) != 1) {
         printf("Falha no processamento do arquivo.\n");
         fclose(arquivoEntrada);
         exit(0);
@@ -1766,13 +1863,11 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
     // Escrever cabeçalho
     cabecalho.status = '0';
     cabecalho.quantidadeSegue = quantidadeRegistros;
-    cabecalho.quantidadeRemovidos = 0;
-    cabecalho.proxByteOffset = 17; // Tamanho do cabeçalho
+    cabecalho.proxRRN = 9; // Tamanho do cabeçalho
 
     fwrite(&cabecalho.status, sizeof(char), 1, arquivoSaida);
     fwrite(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivoSaida);
-    fwrite(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivoSaida);
-    fwrite(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivoSaida);
+    fwrite(&cabecalho.proxRRN, sizeof(int), 1, arquivoSaida);
 
     // Escrever todos os registros ordenados
     for (i = 0; i < quantidadeRegistros; i++) {
@@ -1781,13 +1876,12 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
 
     // Atualizar cabeçalho com status consistente
     cabecalho.status = '1';
-    cabecalho.proxByteOffset = ftell(arquivoSaida);
+    cabecalho.proxRRN = (ftell(arquivoSaida)-9)/30; // Cada registro ocupa 30 bytes
 
     fseek(arquivoSaida, 0, SEEK_SET);
     fwrite(&cabecalho.status, sizeof(char), 1, arquivoSaida);
     fwrite(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivoSaida);
-    fwrite(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivoSaida);
-    fwrite(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivoSaida);
+    fwrite(&cabecalho.proxRRN, sizeof(int), 1, arquivoSaida);
 
     fclose(arquivoSaida);
 
@@ -1818,8 +1912,7 @@ RegistroSegue** LerRegistrosSegue(char *nomeArquivo, int *tamanho) {
     // Ler cabeçalho
     if (fread(&cabecalho.status, sizeof(char), 1, arquivo) != 1 ||
         fread(&cabecalho.quantidadeSegue, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.quantidadeRemovidos, sizeof(int), 1, arquivo) != 1 ||
-        fread(&cabecalho.proxByteOffset, sizeof(long long), 1, arquivo) != 1) {
+        fread(&cabecalho.proxRRN, sizeof(int), 1, arquivo) != 1) {
         fclose(arquivo);
         return NULL;
     }
@@ -2011,11 +2104,27 @@ void JOIN(char *arquivoPessoa, char *arquivoIndice, char *arquivoSegue, int n) {
                 } else {
                     printf("Justificativa para seguir: -\n");
                 }
-                
-                printf("Começou a seguir em: %s\n", registrosSegue[i]->dataInicioQueSegue ? registrosSegue[i]->dataInicioQueSegue : "-");
-                printf("Parou de seguir em: %s\n", registrosSegue[i]->dataFimQueSegue ? registrosSegue[i]->dataFimQueSegue : "-");
+                // Imprimir data início
+                printf("Começou a seguir em: ");
+                if (registrosSegue[i]->dataInicioQueSegue[0] == '$') {
+                   printf("-");
+                } else {
+                   for (int j = 0; j < 10; j++) {
+                         printf("%c", registrosSegue[i]->dataInicioQueSegue[j]);
+                     }
+                    }
                 printf("\n");
-                
+
+                // Imprimir data fim
+                printf("Parou de seguir em: ");
+                if (registrosSegue[i]->dataFimQueSegue[0] == '$') {
+                       printf("-");
+                } else {
+                     for (int j = 0; j < 10; j++) {
+                           printf("%c", registrosSegue[i]->dataFimQueSegue[j]);
+                        }
+                }
+                printf("\n\n");
                 i--;
             }
             

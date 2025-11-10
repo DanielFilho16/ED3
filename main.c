@@ -47,7 +47,7 @@ int main() {
 		case 6: 
 			scanf("%s", arg1); 
 			scanf("%s", arg2); 
-			INSERT_INTO(arg1, arg2); 
+			INSERT_INTO(arg1, arg2);
 			break;
 
 		case 7: 

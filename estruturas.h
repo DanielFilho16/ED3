@@ -43,19 +43,17 @@ typedef struct {
 typedef struct {
     char status;                // 1 byte
     int quantidadeSegue;        // 4 bytes
-    int quantidadeRemovidos;    // 4 bytes
-    long long proxByteOffset;   // 8 bytes
+    int proxRRN;   // 4 bytes
 } CabecalhoSegue;
 
 // Estrutura do registro segue
 typedef struct {
     char removido;              // 1 byte
-    int tamanhoRegistro;        // 4 bytes
     int idPessoaQueSegue;       // 4 bytes
     int idPessoaQueESeguida;    // 4 bytes
     char dataInicioQueSegue[10];   // 10 bytes
     char dataFimQueSegue[10];      // 10 bytes
-    int grauAmizade;            // 4 bytes
+    char grauAmizade;            // 1 bytes
 } RegistroSegue;
 
 //funções
