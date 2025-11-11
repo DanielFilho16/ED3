@@ -3,7 +3,8 @@
 
 #define debug 0
 #define debugi 0
-#define debugj 1
+#define debugj 0
+#define debugk 0
 
 // ordena idPessoa para o indice
 int compararIdPessoa(const void *a, const void *b) {
@@ -1999,167 +2000,242 @@ void LiberarRegistrosSegue(RegistroSegue **registros, int tamanho) {
 
 // Função 10 - JOIN (conforme orientações)
 void JOIN(char *arquivoPessoa, char *arquivoIndice, char *arquivoSegue, int n) {
-    // Carregar arquivo segue para RAM conforme orientações
-    int tamanho;
-    RegistroSegue **registrosSegue = LerRegistrosSegue(arquivoSegue, &tamanho);
-    
-    if (registrosSegue == NULL) {
-        printf("Falha no processamento do arquivo.\n");
-        exit(0);
-    }
-    
-    for (int i = 0; i < n; i++) {
-        char entrada[300];
-        char nomeCampo[100];
-        char valorBusca[200];
+        // Carregar arquivo segue para RAM conforme orientações
+        int tamanho;
+        RegistroSegue **registrosSegue = LerRegistrosSegue(arquivoSegue, &tamanho);
         
-        if (fgets(entrada, sizeof(entrada), stdin) == NULL) {
+        if (registrosSegue == NULL) {
             printf("Falha no processamento do arquivo.\n");
-            LiberarRegistrosSegue(registrosSegue, tamanho);
+            if(debugk) fprintf(stderr,"Erro ao carregar registros segue para RAM\n");
             exit(0);
         }
         
-        entrada[strcspn(entrada, "\r\n")] = '\0';
-        
-        if (strlen(entrada) == 0) {
-            i--;
-            continue;
-        }
-        
-        // Pular número da linha (ex: "1 ", "2 ", etc.)
-        char *ptr = entrada;
-        while (*ptr && (isdigit(*ptr) || isspace(*ptr))) {
-            ptr++;
-        }
-        
-        // Procura símbolo = para separar campo e valor
-        char *separador = strchr(ptr, '=');
-        if (separador == NULL) {
-            printf("Falha no processamento do arquivo.\n");
-            LiberarRegistrosSegue(registrosSegue, tamanho);
-            exit(0);
-        }
-        
-        // Separar nomeCampo e valorCampo
-        *separador = '\0';
-        char *nomeCampoPtr = ptr;
-        
-        strcpy(nomeCampo, nomeCampoPtr);
-        strcpy(valorBusca, separador + 1);
-        
-        // Se tiver entre aspas, remover as aspas
-        if (valorBusca[0] == '"' && valorBusca[strlen(valorBusca) - 1] == '"') {
-            valorBusca[strlen(valorBusca) - 1] = '\0';
-            memmove(valorBusca, valorBusca + 1, strlen(valorBusca));
-        }
-        
-        // USAR MÓDULO DE BUSCA MODULARIZADO
-        ResultadoBusca *resultado = buscarPessoas(arquivoPessoa, arquivoIndice, nomeCampo, valorBusca);
-        
-        if (resultado == NULL || resultado->quantidade == 0) {
-            printf("Registro inexistente.\n");
+        for (int i = 0; i < n; i++) {
+            char entrada[300];
+            char nomeCampo[100];
+            char valorBusca[200];
+            
+            if (fgets(entrada, sizeof(entrada), stdin) == NULL) {
+                printf("Falha no processamento do arquivo.\n");
+                if(debugk) fprintf(stderr,"Erro ao ler entrada de busca JOIN\n");
+                LiberarRegistrosSegue(registrosSegue, tamanho);
+                exit(0);
+            }
+            
+            entrada[strcspn(entrada, "\r\n")] = '\0';
+            if(debugk) printf("JOIN - Entrada lida: %s\n", entrada);
+            
+            if (strlen(entrada) == 0) {
+                i--;
+                continue;
+            }
+            
+            // Pular número da linha (ex: "1 ", "2 ", etc.)
+            char *ptr = entrada;
+            while (*ptr && (isdigit(*ptr) || isspace(*ptr))) {
+                ptr++;
+            }
+            if(debugk) printf("JOIN - Critério de busca após pular número: %s\n", ptr);
+            // Procura símbolo = para separar campo e valor
+            char *separador = strchr(ptr, '=');
+            
+            if (separador == NULL) {
+                printf("Falha no processamento do arquivo.\n");
+                if(debugk) fprintf(stderr,"Erro ao separar campo e valor na busca JOIN\n");
+                LiberarRegistrosSegue(registrosSegue, tamanho);
+                exit(0);
+            }
+            
+            // Separar nomeCampo e valorCampo
+            *separador = '\0';
+            char *nomeCampoPtr = ptr;
+            
+            strcpy(nomeCampo, nomeCampoPtr);
+            strcpy(valorBusca, separador + 1);
+            
+            // Se tiver entre aspas, remover as aspas
+            if (valorBusca[0] == '"' && valorBusca[strlen(valorBusca) - 1] == '"') {
+                valorBusca[strlen(valorBusca) - 1] = '\0';
+                memmove(valorBusca, valorBusca + 1, strlen(valorBusca));
+            }
+            
+            // USAR MÓDULO DE BUSCA MODULARIZADO
+            ResultadoBusca *resultado = buscarPessoas(arquivoPessoa, arquivoIndice, nomeCampo, valorBusca);
+            
+            if (resultado == NULL || resultado->quantidade == 0) {
+                printf("Registro inexistente.\n");
+                if (resultado != NULL) {
+                    liberarResultadoBusca(resultado);
+                }
+                continue;
+            }
+            
+            // Processa todos os resultados encontrados
+            for (int j = 0; j < resultado->quantidade; j++) {
+            
+                RegistroPessoa pessoa = resultado->pessoas[j];
+                
+                // Exibir dados da pessoa
+            
+                printf("Dados da pessoa de codigo %d\n", pessoa.idPessoa);
+                printf("Nome: %s\n", pessoa.nomePessoa ? pessoa.nomePessoa : "-");
+                if (pessoa.idadePessoa == -1) {
+                    printf("Idade: -\n");
+                } else {
+                    printf("Idade: %d\n", pessoa.idadePessoa);
+                }
+                printf("Usuario: %s\n", pessoa.nomeUsuario ? pessoa.nomeUsuario : "-");
+                printf("\n");
+                
+                // Buscar registros no array segue carregado na RAM conforme orientações
+                int idPessoa = pessoa.idPessoa;
+                
+                // Achar a posição de um item nos registros segue usando busca binária
+                int posicaoAchada = BuscaBinariaSegue(registrosSegue, tamanho, idPessoa);
+                
+                if (posicaoAchada == -1) {
+                    // Não encontrou nenhum registro
+                    printf("Registro inexistente.\n");
+                } else {
+                    // Achar todos os items para trás
+                    int i = posicaoAchada;
+                    while (i >= 0 && registrosSegue[i]->idPessoaQueSegue == idPessoa) {
+                        i--;
+                    }
+
+                    i++; // Voltar para o primeiro item válido
+                    while(i <= posicaoAchada && registrosSegue[i]->idPessoaQueSegue == idPessoa) {
+                        if(debugk) printf("entrou no priemiro while\n");
+
+                        // Exibe a pessoa e o segue atual
+                        printf("Segue a pessoa de codigo: %d\n", registrosSegue[i]->idPessoaQueESeguida);
+                        
+                        // Justificativa para seguir
+                        if (registrosSegue[i]->grauAmizade == '0') {
+                            printf("Justificativa para seguir: celebridade\n");
+                        } else if (registrosSegue[i]->grauAmizade == '1') {
+                            printf("Justificativa para seguir: amiga de minha amiga\n");
+                        } else if (registrosSegue[i]->grauAmizade == '2') {
+                            printf("Justificativa para seguir: minha amiga\n");
+                        } else {
+                            printf("Justificativa para seguir: -\n");
+                        }
+                        // Imprimir data início
+                        printf("Começou a seguir em: ");
+                    
+                        int datainvalida = 0;
+                        for (int j = 0; j <10; j++) {
+                            if (registrosSegue[i]->dataInicioQueSegue[j] == '$') {
+                                datainvalida = 1;
+                                break;
+                            }
+                        }
+                    
+                        if (datainvalida) {
+                        printf("-");
+                        } else {
+                        for (int j = 0; j < 10; j++) {
+                                printf("%c", registrosSegue[i]->dataInicioQueSegue[j]);
+                            }
+                            }
+                        printf("\n");
+
+                        // Imprimir data fim
+                        printf("Parou de seguir em: ");
+
+                        datainvalida = 0;
+                        for (int j = 0; j <10; j++) {
+                            if (registrosSegue[i]->dataFimQueSegue[j] == '$') {
+                                datainvalida = 1;
+                                break;
+                            }
+                        }
+
+
+                        if (datainvalida) {
+                            printf("-");
+                        } else {
+                            for (int j = 0; j < 10; j++) {
+                                printf("%c", registrosSegue[i]->dataFimQueSegue[j]);
+                                }
+                        }
+                        printf("\n\n");
+                        i++;
+                    }
+                    
+                    // Achar todos para frente
+                    i = posicaoAchada + 1;
+                    while (i < tamanho && registrosSegue[i]->idPessoaQueSegue == idPessoa) {
+                        
+                        if(debugk) printf("entrou no segundo while\n");
+                        // Exibe a pessoa e o segue atual
+                        printf("Segue a pessoa de codigo: %d\n", registrosSegue[i]->idPessoaQueESeguida);
+                        
+                        // Justificativa para seguir
+                        if (registrosSegue[i]->grauAmizade == '0') {
+                            printf("Justificativa para seguir: celebridade\n");
+                        } else if (registrosSegue[i]->grauAmizade == '1') {
+                            printf("Justificativa para seguir: amiga de minha amiga\n");
+                        } else if (registrosSegue[i]->grauAmizade == '2') {
+                            printf("Justificativa para seguir: minha amiga\n");
+                        } else {
+                            printf("Justificativa para seguir: -\n");
+                        }
+                        
+                        // Imprimir data início
+                        printf("Começou a seguir em: ");
+                    
+                        int datainvalida = 0;
+                        for (int j = 0; j <10; j++) {
+                            if (registrosSegue[i]->dataInicioQueSegue[j] == '$') {
+                                datainvalida = 1;
+                                break;
+                            }
+                        }
+                    
+                        if (datainvalida) {
+                        printf("-");
+                        } else {
+                        for (int j = 0; j < 10; j++) {
+                                printf("%c", registrosSegue[i]->dataInicioQueSegue[j]);
+                            }
+                            }
+                        printf("\n");
+
+                        // Imprimir data fim
+                        printf("Parou de seguir em: ");
+
+                        datainvalida = 0;
+                        for (int j = 0; j <10; j++) {
+                            if (registrosSegue[i]->dataFimQueSegue[j] == '$') {
+                                datainvalida = 1;
+                                break;
+                            }
+                        }
+
+
+                        if (datainvalida) {
+                            printf("-");
+                        } else {
+                            for (int j = 0; j < 10; j++) {
+                                printf("%c", registrosSegue[i]->dataFimQueSegue[j]);
+                                }
+                        }
+                        printf("\n\n");
+                        i++;
+                    }
+                }
+
+                printf("\n");
+
+            }    
+                    
+            // Liberar memória do resultado de busca
             if (resultado != NULL) {
                 liberarResultadoBusca(resultado);
             }
-            continue;
         }
         
-        // Usar o primeiro resultado encontrado
-        RegistroPessoa pessoa = resultado->pessoas[0];
-        
-        // Exibir dados da pessoa
-        printf("Dados da pessoa de codigo %d\n", pessoa.idPessoa);
-        printf("Nome: %s\n", pessoa.nomePessoa ? pessoa.nomePessoa : "-");
-        if (pessoa.idadePessoa == -1) {
-            printf("Idade: -\n");
-        } else {
-            printf("Idade: %d\n", pessoa.idadePessoa);
-        }
-        printf("Usuario: %s\n", pessoa.nomeUsuario ? pessoa.nomeUsuario : "-");
-        printf("\n");
-        
-        // Buscar registros no array segue carregado na RAM conforme orientações
-        int idPessoa = pessoa.idPessoa;
-        
-        // Achar a posição de um item nos registros segue usando busca binária
-        int posicaoAchada = BuscaBinariaSegue(registrosSegue, tamanho, idPessoa);
-        
-        if (posicaoAchada == -1) {
-            // Não encontrou nenhum registro
-            printf("Registro inexistente.\n");
-        } else {
-            // Achar todos os items para trás
-            int i = posicaoAchada;
-            while (i >= 0 && registrosSegue[i]->idPessoaQueSegue == idPessoa) {
-                // Exibe a pessoa e o segue atual
-                printf("Segue a pessoa de codigo: %d\n", registrosSegue[i]->idPessoaQueESeguida);
-                
-                // Justificativa para seguir
-                if (registrosSegue[i]->grauAmizade == 0) {
-                    printf("Justificativa para seguir: celebridade\n");
-                } else if (registrosSegue[i]->grauAmizade == 1) {
-                    printf("Justificativa para seguir: amiga de minha amiga\n");
-                } else if (registrosSegue[i]->grauAmizade == 2) {
-                    printf("Justificativa para seguir: minha amiga\n");
-                } else {
-                    printf("Justificativa para seguir: -\n");
-                }
-                // Imprimir data início
-                printf("Começou a seguir em: ");
-                if (registrosSegue[i]->dataInicioQueSegue[0] == '$') {
-                   printf("-");
-                } else {
-                   for (int j = 0; j < 10; j++) {
-                         printf("%c", registrosSegue[i]->dataInicioQueSegue[j]);
-                     }
-                    }
-                printf("\n");
-
-                // Imprimir data fim
-                printf("Parou de seguir em: ");
-                if (registrosSegue[i]->dataFimQueSegue[0] == '$') {
-                       printf("-");
-                } else {
-                     for (int j = 0; j < 10; j++) {
-                           printf("%c", registrosSegue[i]->dataFimQueSegue[j]);
-                        }
-                }
-                printf("\n\n");
-                i--;
-            }
-            
-            // Achar todos para frente
-            i = posicaoAchada + 1;
-            while (i < tamanho && registrosSegue[i]->idPessoaQueSegue == idPessoa) {
-                // Exibe a pessoa e o segue atual
-                printf("Segue a pessoa de codigo: %d\n", registrosSegue[i]->idPessoaQueESeguida);
-                
-                // Justificativa para seguir
-                if (registrosSegue[i]->grauAmizade == 0) {
-                    printf("Justificativa para seguir: celebridade\n");
-                } else if (registrosSegue[i]->grauAmizade == 1) {
-                    printf("Justificativa para seguir: amiga de minha amiga\n");
-                } else if (registrosSegue[i]->grauAmizade == 2) {
-                    printf("Justificativa para seguir: minha amiga\n");
-                } else {
-                    printf("Justificativa para seguir: -\n");
-                }
-                
-                printf("Começou a seguir em: %s\n", registrosSegue[i]->dataInicioQueSegue ? registrosSegue[i]->dataInicioQueSegue : "-");
-                printf("Parou de seguir em: %s\n", registrosSegue[i]->dataFimQueSegue ? registrosSegue[i]->dataFimQueSegue : "-");
-                printf("\n");
-                
-                i++;
-            }
-        }
-        
-        // Liberar memória do resultado de busca
-        if (resultado != NULL) {
-            liberarResultadoBusca(resultado);
-        }
-    }
-    
-    // Liberar memória dos registros segue carregados na RAM
-    LiberarRegistrosSegue(registrosSegue, tamanho);
+        // Liberar memória dos registros segue carregados na RAM
+        LiberarRegistrosSegue(registrosSegue, tamanho);
 }
-

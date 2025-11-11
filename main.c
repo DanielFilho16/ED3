@@ -8,7 +8,7 @@
 int main() {
 
 	int funcionalidade; 
-	char arg1[100], arg2[100], arg3[100]; 
+	char arg1[100], arg2[100], arg3[100], arg4[100]; 
 
 	scanf("%d", &funcionalidade); 
 
@@ -72,11 +72,12 @@ int main() {
 			scanf("%s", arg1); 
 			scanf("%s", arg2); 
 			scanf("%s", arg3); 
-			JOIN(arg1, arg2, arg3, 1); 
+			scanf("%s", arg4);
+			JOIN(arg1, arg2, arg3, atoi(arg4)); 
 			break;
 
 		default: 
-			printf("Funcionalidade inv�lida.\n"); 
+			printf("Funcionalidade inválida.\n"); 
 			break;
     }
 
