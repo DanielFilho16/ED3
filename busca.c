@@ -1,4 +1,7 @@
 #include "busca.h"
+#include "estruturas.h"
+#include "registro_pessoa.h"
+#include "io_arquivos.h"
 
 
 // Função auxiliar para busca binária no índice por idPessoa

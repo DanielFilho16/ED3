@@ -4,6 +4,8 @@
 
 #include "estruturas.h"
 #include "busca.h"
+#include "crud_pessoa.h"
+#include "crud_segue.h"
 
 int main() {
 
