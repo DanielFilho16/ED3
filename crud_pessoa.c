@@ -344,6 +344,9 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             exit(0);
         }
 
+
+        inicializarRegistroPessoa(&pessoa);
+
         // Processar idPessoa
         pessoa.idPessoa = atoi(campos[0]);
 
@@ -353,7 +356,7 @@ void INSERT_INTO(char *binArquivo, char *indiceArquivo) {
             exit(0);
         }
 
-        inicializarRegistroPessoa(&pessoa);
+        
 
         // Processar nomePessoa
         if (strcmp(campos[1], "NULO") == 0) {
@@ -494,6 +497,9 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
             cabecalho.status = '1';
             fseek(arquivo, 0, SEEK_SET);
             escreverCabecalhoPessoa(arquivo, &cabecalho);
+
+            fflush(arquivo);
+
         }
         
         // Liberar memória do resultado
@@ -514,10 +520,12 @@ void DELETE_FROM(char *binArquivo, char *indiceArquivo) {
 }
 
 // Função auxiliar para aplicar atualizações em um registro
-void aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtualizacao) {
+int aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtualizacao) {
     if (strcmp(nomeCampo, "idPessoa") == 0) {
-        // Não permitir atualização de idPessoa
-        return;
+        // permitir atualização de idPessoa
+        pessoa->idPessoa = atoi(valorAtualizacao);
+
+        return 1; // Indica tentativa de alterar o ID
     } else if (strcmp(nomeCampo, "nomePessoa") == 0) {
         if (strcmp(valorAtualizacao, "NULO") == 0) {
             if (pessoa->nomePessoa) {
@@ -565,6 +573,7 @@ void aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtu
             strcpy(pessoa->nomeUsuario, valorAtualizacao);
         }
     }
+    return 0; // Indica que não houve tentativa de alterar o ID
 }
 
 // Função 7 - UPDATE
@@ -655,7 +664,25 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
                 copiarRegistroPessoa(&pessoaAtualizada, &pessoaOriginal);
 
                 // Aplicar atualizações
-                aplicarAtualizacoes(&pessoaAtualizada, nomeCampoAtualiza, valorAtualizacao);
+                int flagID = 0; //usada para verificar se houve tentativa de alterar o ID
+                flagID = aplicarAtualizacoes(&pessoaAtualizada, nomeCampoAtualiza, valorAtualizacao);
+
+
+                if (flagID) {
+
+                    // Carregar índice em memória
+                    int tamanhoIndice;
+                    RegistroIndice *registrosIndice = CarregarIndiceEmMemoria(indiceArquivo, &tamanhoIndice);
+                    //remover do índice em memoria o idPessoa antigo
+                    RemoverDoIndice(&registrosIndice, &tamanhoIndice, pessoaOriginal.idPessoa);
+                    // Reescrever índice
+                    ReescreverIndice(indiceArquivo, registrosIndice, tamanhoIndice);
+                    //atualizar o índice com o novo idPessoa
+                    atualizarIndice(indiceArquivo, pessoaAtualizada.idPessoa, resultado->posicoes[j]);
+                    free(registrosIndice);
+
+
+                }
 
                 // Calcular tamanhos
                 int tamanhoOriginal = pessoaOriginal.tamanhoRegistro;
@@ -683,6 +710,26 @@ void UPDATE(char *binArquivo, char *indiceArquivo) {
 
                     // Atualizar índice
                     atualizarIndice(indiceArquivo, pessoaAtualizada.idPessoa, novaPosicao);
+
+                    //atualizar cabeçalho
+                    CabecalhoPessoa cabecalho;
+                    
+                    fseek(arquivo, 0, SEEK_SET);
+                    // Ler cabeçalho
+                    if (!lerCabecalhoPessoa(arquivo, &cabecalho)) {
+                        printf("Falha no processamento do arquivo.\n");
+                        fclose(arquivo);
+                        exit(0);
+                 }
+
+                    cabecalho.quantidadeRemovidos++;
+                    fseek(arquivo, 0, SEEK_END);
+                    cabecalho.proxByteOffset = ftell(arquivo);
+                    cabecalho.status = '1';
+
+                    fseek(arquivo, 0, SEEK_SET);
+                    escreverCabecalhoPessoa(arquivo, &cabecalho);
+
                 }
 
                 // Liberar memória

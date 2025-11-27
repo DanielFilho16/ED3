@@ -75,9 +75,18 @@ void removerAspas(char *str) {
 // Função auxiliar para pular número da linha em entrada
 char* pularNumeroLinha(char *entrada) {
 	char *ptr = entrada;
-	while (*ptr && (isdigit(*ptr) || isspace(*ptr))) {
-		ptr++;
-	}
-	return ptr;
+		
+	// 1. Pula todos os dígitos no início da linha
+    while (*ptr && isdigit(*ptr)) {
+        ptr++;
+    }
+
+    // 2. Pula todos os espaços após os dígitos
+    while (*ptr && isspace(*ptr)) {
+        ptr++;
+    }
+
+    // Agora ptr aponta para o início do ID (ex: "404,...")
+    return ptr;
 }
 

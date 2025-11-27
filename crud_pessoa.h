@@ -14,7 +14,7 @@ void UPDATE(char *binArquivo, char *indiceArquivo);
 
 // Funções auxiliares
 int inserirRegistroPessoa(char *binArquivo, RegistroPessoa *pessoa);
-void aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtualizacao);
+int aplicarAtualizacoes(RegistroPessoa *pessoa, char *nomeCampo, char *valorAtualizacao);
 
 #endif
 

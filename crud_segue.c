@@ -129,7 +129,7 @@ void ORDER_BY(char *arquivoDesordenado, char *arquivoOrdenado) {
     // Escrever cabeçalho
     cabecalho.status = '0';
     cabecalho.quantidadeSegue = quantidadeRegistros;
-    cabecalho.proxRRN = 9; // Tamanho do cabeçalho
+    cabecalho.proxRRN = 0; 
 
     escreverCabecalhoSegue(arquivoSaida, &cabecalho);
 
