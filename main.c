@@ -6,6 +6,8 @@
 #include "busca.h"
 #include "crud_pessoa.h"
 #include "crud_segue.h"
+#include "grafo.h"
+#include "utils.h"
 
 int main() {
 
@@ -76,6 +78,36 @@ int main() {
 			scanf("%s", arg3); 
 			scanf("%s", arg4);
 			JOIN(arg1, arg2, arg3, atoi(arg4)); 
+			break;
+
+		case 11:
+			scanf("%s", arg1);
+			scanf("%s", arg2);
+			scanf("%s", arg3);
+			funcionalidade11(arg1, arg2, arg3);
+			break;
+
+		case 12:
+			scanf("%s", arg1);
+			scanf("%s", arg2);
+			scanf("%s", arg3);
+			funcionalidade12(arg1, arg2, arg3);
+			break;
+
+		case 13:
+			scanf("%s", arg1);
+			scanf("%s", arg2);
+			scanf("%s", arg3);
+			scan_quote_string(arg4);
+			funcionalidade13(arg1, arg2, arg3, arg4);
+			break;
+
+		case 14:
+			scanf("%s", arg1);
+			scanf("%s", arg2);
+			scanf("%s", arg3);
+			scan_quote_string(arg4);
+			funcionalidade14(arg1, arg2, arg3, arg4);
 			break;
 
 		default: 
